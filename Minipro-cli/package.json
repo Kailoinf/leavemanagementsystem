@@ -1,0 +1,48 @@
+{
+  "name": "minipro-cli",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18.19.1 <19 || >=20.6.1"
+  },
+  "scripts": {
+    "type-check": "tsc",
+    "dev": "cross-env NODE_ENV=development node build.js",
+    "build": "cross-env NODE_ENV=production node build.js"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.28.4",
+    "@vue-mini/core": "^1.2.5"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.28.4",
+    "@babel/plugin-transform-runtime": "^7.28.3",
+    "@babel/preset-env": "^7.28.3",
+    "@babel/preset-typescript": "^7.27.1",
+    "@babel/traverse": "^7.28.4",
+    "@babel/types": "^7.28.4",
+    "@rollup/plugin-commonjs": "^28.0.6",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-replace": "^6.0.2",
+    "@rollup/plugin-terser": "^0.4.4",
+    "babel-plugin-autocomplete-index": "^0.2.0",
+    "babel-plugin-module-resolver": "^5.0.2",
+    "babel-plugin-transform-inline-environment-variables": "^0.4.4",
+    "chokidar": "^4.0.3",
+    "cross-env": "^10.0.0",
+    "fs-extra": "^11.3.1",
+    "kolorist": "^1.8.0",
+    "local-pkg": "^1.1.2",
+    "postcss": "^8.5.6",
+    "postcss-load-config": "^6.0.1",
+    "postcss-pxtorpx-pro": "^2.0.0",
+    "rollup": "^4.50.1",
+    "terser": "^5.44.0",
+    "typescript": "^5.9.2"
+  },
+  "browserslist": [
+    "iOS >= 10",
+    "Chrome >= 63"
+  ]
+}
