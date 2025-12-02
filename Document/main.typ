@@ -1,4 +1,4 @@
-#import "@local/gakusyun-doc:2.0.0": *
+#import "@preview/gakusyun-doc:1.0.0": *
 
 // 设置模板参数
 #show: docu.with(
