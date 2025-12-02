@@ -4,4 +4,13 @@ version = "0.1.0"
 description = "the backend for Leave Management System"
 readme = "README.md"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "fastapi>=0.123.0",
+    "sqlmodel>=0.0.27",
+    "toml>=0.10.2",
+    "uvicorn>=0.38.0",
+]
+
+[[tool.uv.index]]
+url = "https://mirrors.ustc.edu.cn/pypi/simple"
+default = true
