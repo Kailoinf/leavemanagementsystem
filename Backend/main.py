@@ -8,7 +8,7 @@ from typing import List
 
 # 数据模型定义
 class Reviewer(SQLModel, table=True):
-    staff_id: int = Field(primary_key=True, default=None)  # 整数主键默认自增
+    reviewer_id: int = Field(primary_key=True, default=None)  # 整数主键默认自增
     name: str = Field(max_length=8)
     department: str = Field(max_length=8, nullable=True)
     role: str = Field(max_length=10, nullable=True)
@@ -21,7 +21,7 @@ class Student(SQLModel, table=True):
     password: str = Field(max_length=32, nullable=True)
     department: str = Field(max_length=8, nullable=True)
     reviewer_id: int = Field(
-        max_length=12, foreign_key="reviewer.staff_id", nullable=True
+        max_length=12, foreign_key="reviewer.reviewer_id", nullable=True
     )
     guarantee_permission: datetime
 
@@ -43,7 +43,7 @@ class Leave(SQLModel, table=True):
     remarks: str = Field(max_length=100, nullable=True)
     materials: str = Field(max_length=100, nullable=True)
     reviewer_id: int = Field(
-        max_length=12, foreign_key="reviewer.staff_id", nullable=True
+        max_length=12, foreign_key="reviewer.reviewer_id", nullable=True
     )
     teacher_id: int = Field(
         max_length=12, foreign_key="teacher.teacher_id", nullable=True

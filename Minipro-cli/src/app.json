@@ -3,12 +3,15 @@
   "themeLocation": "theme.json",
   "pages": [
     "pages/home/index",
-    "pages/mine/index"
+    "pages/mine/index",
+    "pages/students/index",
+    "pages/leaves/index",
+    "pages/reviewers/index"
   ],
   "window": {
     "navigationBarBackgroundColor": "@bgColor",
     "navigationBarTextStyle": "@style",
-    "navigationBarTitleText": "minipro-cli",
+    "navigationBarTitleText": "请假管理系统",
     "backgroundColor": "@bgColor",
     "backgroundColorTop": "@bgColor",
     "backgroundColorBottom": "@bgColor"

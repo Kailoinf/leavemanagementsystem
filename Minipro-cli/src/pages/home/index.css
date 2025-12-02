@@ -1,21 +1,79 @@
 .home {
-  text-align: center;
+  padding: 40rpx;
 }
 
-.logo {
-  width: 400px;
-  height: 400px;
-  margin-top: 120px;
+.data-section {
+  max-width: 100%;
 }
 
-.greeting {
-  color: #2c3e50;
-  font-size: 64px;
+.data-grid {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+.data-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  height: 100px;
+  padding: 20px;
+  min-width: 80px;
+  background-color: #f8f9fa;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(1, 1, 1, 0.2);
+  transition: all 0.2s ease;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:hover {
+  background-color: #e9ecef;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(1, 1, 1, 0.3);
+}
+
+.data-number {
+  font-size: 48rpx;
   font-weight: bold;
+  color: #007aff;
+}
+
+.data-label {
+  font-size: 32rpx;
+  color: #333;
+  font-weight: 500;
+  margin-right: 16rpx;
+}
+
+.refresh-btn {
+  display: block;
+  margin: 0 auto;
+  padding: 24rpx 60rpx;
+  background-color: #007aff;
+  color: white;
+  border: none;
+  border-radius: 16rpx;
+  font-size: 32rpx;
+  font-weight: 500;
 }
 
 @media (prefers-color-scheme: dark) {
   .greeting {
     color: #fff;
+  }
+
+  .request-item {
+    background-color: #2a2a2a;
+    border-color: #444;
+  }
+
+  .result {
+    background-color: #1a1a1a;
+    color: #ccc;
   }
 }

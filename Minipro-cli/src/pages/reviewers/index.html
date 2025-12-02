@@ -1,0 +1,28 @@
+<view class="container">
+
+  <view class="content">
+    <view class="table-header">
+      <text class="header-cell">审核员ID</text>
+      <text class="header-cell">姓名</text>
+      <text class="header-cell">职务</text>
+      <text class="header-cell">部门</text>
+    </view>
+
+    <scroll-view scroll-y class="table-body" bindscrolltolower="loadMore">
+      <view wx:for="{{reviewers}}" wx:key="reviewer_id" class="table-row">
+        <text class="cell">{{item.reviewer_id}}</text>
+        <text class="cell">{{item.name}}</text>
+        <text class="cell">{{item.role}}</text>
+        <text class="cell">{{item.department}}</text>
+      </view>
+
+      <view wx:if="{{loading}}" class="loading">
+        <text>加载中...</text>
+      </view>
+
+      <view wx:if="{{!loading && reviewers.length === 0}}" class="empty">
+        <text>暂无数据</text>
+      </view>
+    </scroll-view>
+  </view>
+</view>

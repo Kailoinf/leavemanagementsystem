@@ -1,4 +1,22 @@
 <view class="home">
-  <image class="logo" src="/images/vue-mini.png"></image>
-  <view class="greeting">{{ greeting }}</view>
+  <view class="data-section">
+    <view class="data-grid">
+      <view class="data-item clickable" bindtap="goToStudents">
+        <text class="data-label">学生数</text>
+        <text class="data-number">{{studentCount}}</text>
+      </view>
+
+      <view class="data-item clickable" bindtap="goToLeaves">
+        <text class="data-label">请假条</text>
+        <text class="data-number">{{leaveCount}}</text>
+      </view>
+
+      <view class="data-item clickable" bindtap="goToReviewers">
+        <text class="data-label">审核员</text>
+        <text class="data-number">{{reviewerCount}}</text>
+      </view>
+    </view>
+
+    <button class="refresh-btn" bindtap="getAllData">刷新数据</button>
+  </view>
 </view>

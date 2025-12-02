@@ -1,0 +1,37 @@
+<view class="container">
+  <view class="content">
+    <view class="table-header">
+      <text class="header-cell">请假ID</text>
+      <text class="header-cell">学生ID</text>
+      <text class="header-cell">请假类型</text>
+      <text class="header-cell">请假天数</text>
+      <text class="header-cell">请假时间</text>
+      <text class="header-cell">状态</text>
+      <text class="header-cell">审核人ID</text>
+      <text class="header-cell">审核意见</text>
+      <text class="header-cell">备注</text>
+    </view>
+
+    <scroll-view scroll-y class="table-body" bindscrolltolower="loadMore">
+      <view wx:for="{{leaves}}" wx:key="leave_id" class="table-row">
+        <text class="cell">{{item.leave_id}}</text>
+        <text class="cell">{{item.student_id}}</text>
+        <text class="cell">{{item.leave_type}}</text>
+        <text class="cell">{{item.leave_days}}</text>
+        <text class="cell">{{item.leave_date_formatted}}</text>
+        <text class="cell status-{{item.status}}">{{item.status}}</text>
+        <text class="cell">{{item.reviewer_id}}</text>
+        <text class="cell">{{item.audit_remarks}}</text>
+        <text class="cell">{{item.remarks}}</text>
+      </view>
+
+      <view wx:if="{{loading}}" class="loading">
+        <text>加载中...</text>
+      </view>
+
+      <view wx:if="{{!loading && leaves.length === 0}}" class="empty">
+        <text>暂无数据</text>
+      </view>
+    </scroll-view>
+  </view>
+</view>
