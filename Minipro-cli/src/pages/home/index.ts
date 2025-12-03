@@ -1,4 +1,5 @@
 import { defineComponent, ref } from '@vue-mini/core';
+import { BASE_URL } from '@/app'
 
 export default defineComponent(() => {
     const studentCount = ref(0);
@@ -9,7 +10,7 @@ export default defineComponent(() => {
     const getStudentCount = () => {
         console.log('获取学生数量');
         wx.request({
-            url: 'http://localhost:8000/students/count',
+            url: BASE_URL + '/students/count',
             method: 'GET',
             success: (res) => {
                 console.log('学生数量获取成功:', res.data);
@@ -27,7 +28,7 @@ export default defineComponent(() => {
     const getLeaveCount = () => {
         console.log('获取请假条数量');
         wx.request({
-            url: 'http://localhost:8000/leaves/count',
+            url: BASE_URL + '/leaves/count',
             method: 'GET',
             success: (res) => {
                 console.log('请假条数量获取成功:', res.data);
@@ -45,7 +46,7 @@ export default defineComponent(() => {
     const getReviewerCount = () => {
         console.log('获取审核员数量');
         wx.request({
-            url: 'http://localhost:8000/reviewers/count',
+            url: BASE_URL + '/reviewers/count',
             method: 'GET',
             success: (res) => {
                 console.log('审核员数量获取成功:', res.data);

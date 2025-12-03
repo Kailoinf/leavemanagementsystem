@@ -1,4 +1,5 @@
 import { defineComponent, ref } from '@vue-mini/core';
+import { BASE_URL } from '@/app';
 
 interface Reviewer {
   reviewer_id: number;
@@ -12,6 +13,8 @@ export default defineComponent(() => {
   const loading = ref(false);
   const page = ref(1);
   const pageSize = 20;
+  const total = ref(0);
+  const totalPages = ref(0);
 
   // 获取审核员数据
   const fetchReviewers = (isRefresh = false) => {
@@ -26,7 +29,7 @@ export default defineComponent(() => {
     });
 
     wx.request({
-      url: 'http://localhost:8000/reviewers',
+      url: BASE_URL + '/reviewers',
       method: 'GET',
       data: {
         page: page.value,
@@ -36,20 +39,26 @@ export default defineComponent(() => {
         console.log('审核员API返回数据:', res.data);
         const data = res.data as any;
 
-        // 处理不同的返回格式
+        // 处理分页响应格式
         let reviewersData = [];
-        if (data && Array.isArray(data)) {
-          // 直接返回数组
+        if (data && data.items && Array.isArray(data.items)) {
+          // 新的分页格式: {items: [...], total: X, page: Y, page_size: Z, total_pages: W}
+          reviewersData = data.items;
+          total.value = data.total || 0;
+          totalPages.value = data.total_pages || 0;
+        } else if (data && Array.isArray(data)) {
+          // 直接返回数组（向后兼容）
           reviewersData = data;
         } else if (data && data.list && Array.isArray(data.list)) {
-          // 返回包含list的对象
+          // 返回包含list的对象（向后兼容）
           reviewersData = data.list;
         } else if (data && typeof data === 'object' && !Array.isArray(data)) {
-          // 返回单个对象，包装成数组
+          // 返回单个对象，包装成数组（向后兼容）
           reviewersData = [data];
         }
 
         console.log('处理后的审核员数据:', reviewersData);
+        console.log('分页信息:', { page: page.value, total: total.value, totalPages: totalPages.value });
 
         if (isRefresh) {
           reviewers.value = reviewersData;
@@ -76,8 +85,13 @@ export default defineComponent(() => {
   // 加载更多数据
   const loadMore = () => {
     if (!loading.value) {
-      page.value++;
-      fetchReviewers();
+      // 检查是否还有更多页面
+      if (totalPages.value === 0 || page.value < totalPages.value) {
+        page.value++;
+        fetchReviewers();
+      } else {
+        console.log('没有更多数据了');
+      }
     }
   };
 
@@ -104,6 +118,9 @@ export default defineComponent(() => {
   return {
     reviewers,
     loading,
+    total,
+    totalPages,
+    page,
     fetchReviewers,
     loadMore,
     refreshData,

@@ -1,4 +1,5 @@
 import { defineComponent, ref } from '@vue-mini/core';
+import { BASE_URL } from '@/app'
 
 interface Leave {
   leave_id: number;
@@ -18,6 +19,8 @@ export default defineComponent(() => {
   const loading = ref(false);
   const page = ref(1);
   const pageSize = 20;
+  const total = ref(0);
+  const totalPages = ref(0);
 
   // 格式化日期显示
   const formatDate = (dateStr: string): string => {
@@ -58,7 +61,7 @@ export default defineComponent(() => {
     });
 
     wx.request({
-      url: 'http://localhost:8000/leaves',
+      url: BASE_URL + '/leaves',
       method: 'GET',
       data: {
         page: page.value,
@@ -68,20 +71,26 @@ export default defineComponent(() => {
         console.log('请假API返回数据:', res.data);
         const data = res.data as any;
 
-        // 处理不同的返回格式
+        // 处理分页响应格式
         let leavesData = [];
-        if (data && Array.isArray(data)) {
-          // 直接返回数组
+        if (data && data.items && Array.isArray(data.items)) {
+          // 新的分页格式: {items: [...], total: X, page: Y, page_size: Z, total_pages: W}
+          leavesData = data.items;
+          total.value = data.total || 0;
+          totalPages.value = data.total_pages || 0;
+        } else if (data && Array.isArray(data)) {
+          // 直接返回数组（向后兼容）
           leavesData = data;
         } else if (data && data.list && Array.isArray(data.list)) {
-          // 返回包含list的对象
+          // 返回包含list的对象（向后兼容）
           leavesData = data.list;
         } else if (data && typeof data === 'object' && !Array.isArray(data)) {
-          // 返回单个对象，包装成数组
+          // 返回单个对象，包装成数组（向后兼容）
           leavesData = [data];
         }
 
         console.log('处理后的请假数据:', leavesData);
+        console.log('分页信息:', { page: page.value, total: total.value, totalPages: totalPages.value });
 
         // 格式化日期字段
         const formattedLeavesData = leavesData.map((leave: any) => ({
@@ -114,8 +123,13 @@ export default defineComponent(() => {
   // 加载更多数据
   const loadMore = () => {
     if (!loading.value) {
-      page.value++;
-      fetchLeaves();
+      // 检查是否还有更多页面
+      if (totalPages.value === 0 || page.value < totalPages.value) {
+        page.value++;
+        fetchLeaves();
+      } else {
+        console.log('没有更多数据了');
+      }
     }
   };
 
@@ -138,6 +152,9 @@ export default defineComponent(() => {
   return {
     leaves,
     loading,
+    total,
+    totalPages,
+    page,
     fetchLeaves,
     loadMore,
     onPullDownRefresh,

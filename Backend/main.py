@@ -1,9 +1,19 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel, Field, create_engine, Session, select
 from datetime import datetime
 import toml
 from typing import List
+from pydantic import BaseModel
+
+
+# 分页响应模型
+class PaginatedResponse(BaseModel):
+    items: List
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
 
 
 # 数据模型定义
@@ -95,7 +105,22 @@ app.add_middleware(
 )
 
 
-# 查询所有用户的函数
+# 分页查询学生的函数
+def get_students_paginated(session: Session, page: int = 1, page_size: int = 20):
+    offset = (page - 1) * page_size
+    statement = select(Student).offset(offset).limit(page_size)
+    students = session.exec(statement).all()
+
+    # 获取总数
+    count_statement = select(Student)
+    total_count = len(session.exec(count_statement).all())
+
+    total_pages = (total_count + page_size - 1) // page_size
+
+    return students, total_count, total_pages
+
+
+# 查询所有用户的函数（保留用于兼容性）
 def get_all_students(session: Session) -> List[Student]:
     statement = select(Student)
     return session.exec(statement).all()
@@ -121,7 +146,22 @@ def create_student(session: Session, student: Student) -> Student:
     return student
 
 
-# 查询所有请假记录的函数
+# 分页查询请假记录的函数
+def get_leaves_paginated(session: Session, page: int = 1, page_size: int = 20):
+    offset = (page - 1) * page_size
+    statement = select(Leave).offset(offset).limit(page_size)
+    leaves = session.exec(statement).all()
+
+    # 获取总数
+    count_statement = select(Leave)
+    total_count = len(session.exec(count_statement).all())
+
+    total_pages = (total_count + page_size - 1) // page_size
+
+    return leaves, total_count, total_pages
+
+
+# 查询所有请假记录的函数（保留用于兼容性）
 def get_all_leaves(session: Session) -> List[Leave]:
     statement = select(Leave)
     return session.exec(statement).all()
@@ -146,6 +186,21 @@ def get_leaves_by_reviewer(session: Session, reviewer_id: int) -> List[Leave]:
     return session.exec(statement).all()
 
 
+def get_reviewers_paginated(session: Session, page: int = 1, page_size: int = 20):
+    offset = (page - 1) * page_size
+    statement = select(Reviewer).offset(offset).limit(page_size)
+    reviewers = session.exec(statement).all()
+
+    # 获取总数
+    count_statement = select(Reviewer)
+    total_count = len(session.exec(count_statement).all())
+
+    total_pages = (total_count + page_size - 1) // page_size
+
+    return reviewers, total_count, total_pages
+
+
+# 查询所有审核员的函数（保留用于兼容性）
 def get_all_reviewsrs(session: Session) -> List[Reviewer]:
     statement = select(Reviewer)
     return session.exec(statement).all()
@@ -163,12 +218,18 @@ def get_reviewer_by_id(session: Session, reviewer_id: int) -> Reviewer:
     return session.exec(statement).first()
 
 
-# API 端点：获取所有用户
-@app.get("/students/", response_model=List[Student])
-def read_students():
+# API 端点：获取所有用户（支持分页）
+@app.get("/students", response_model=PaginatedResponse)
+def read_students(page: int = 1, page_size: int = 20):
     with Session(engine) as session:
-        students = get_all_students(session)
-        return students
+        students, total, total_pages = get_students_paginated(session, page, page_size)
+        return PaginatedResponse(
+            items=students,
+            total=total,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+        )
 
 
 # API 端点：获取学生的数量
@@ -195,12 +256,18 @@ def create_student_endpoint(student: Student):
         return db_student
 
 
-# API 端点：获取所有请假记录
-@app.get("/leaves/", response_model=List[Leave])
-def read_leaves():
+# API 端点：获取所有请假记录（支持分页）
+@app.get("/leaves", response_model=PaginatedResponse)
+def read_leaves(page: int = 1, page_size: int = 20):
     with Session(engine) as session:
-        leaves = get_all_leaves(session)
-        return leaves
+        leaves, total, total_pages = get_leaves_paginated(session, page, page_size)
+        return PaginatedResponse(
+            items=leaves,
+            total=total,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+        )
 
 
 # API 端点：获取请假记录数
@@ -235,11 +302,19 @@ def read_leaves_by_reviewer(reviewer_id: int):
         return leaves
 
 
-@app.get("/reviewers")
-def read_reviewers():
+@app.get("/reviewers", response_model=PaginatedResponse)
+def read_reviewers(page: int = 1, page_size: int = 20):
     with Session(engine) as session:
-        reviewers = get_all_reviewsrs(session)
-        return reviewers
+        reviewers, total, total_pages = get_reviewers_paginated(
+            session, page, page_size
+        )
+        return PaginatedResponse(
+            items=reviewers,
+            total=total,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+        )
 
 
 # 将此端点移到 read_reviewer 之前以避免路径冲突
