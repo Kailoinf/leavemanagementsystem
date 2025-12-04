@@ -38,6 +38,20 @@ export function useNavigation() {
   }
 
   /**
+   * 跳转到教师列表
+   */
+  const goToTeachers = () => {
+    router.push('/teachers')
+  }
+
+  /**
+   * 跳转到课程列表
+   */
+  const goToCourses = () => {
+    router.push('/courses')
+  }
+
+  /**
    * 返回上一页
    */
   const goBack = () => {
@@ -49,6 +63,8 @@ export function useNavigation() {
     goToStudents,
     goToLeaves,
     goToReviewers,
+    goToTeachers,
+    goToCourses,
     goBack
   }
 }

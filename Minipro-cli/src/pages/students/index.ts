@@ -35,13 +35,13 @@ export default defineComponent(() => {
       // 本年只显示月日
       const month = date.getMonth() + 1;
       const day = date.getDate();
-      return `${month}月${day}日`;
+      return `${month}-${day}`;
     } else {
       // 非本年显示年月日
       const year = date.getFullYear();
       const month = date.getMonth() + 1;
       const day = date.getDate();
-      return `${year}年${month}月${day}日`;
+      return `${year}-${month}-${day}`;
     }
   };
 

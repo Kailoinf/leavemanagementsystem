@@ -6,7 +6,9 @@
     "pages/mine/index",
     "pages/students/index",
     "pages/leaves/index",
-    "pages/reviewers/index"
+    "pages/reviewers/index",
+    "pages/teachers/index",
+    "pages/courses/index"
   ],
   "window": {
     "navigationBarBackgroundColor": "@bgColor",

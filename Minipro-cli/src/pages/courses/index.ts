@@ -1,58 +1,26 @@
 import { defineComponent, ref } from '@vue-mini/core';
-import { BASE_URL } from '@/app'
+import { BASE_URL } from '@/app';
 
-interface Leave {
-  leave_id: number;
-  student_id: string;
-  leave_type: string;
-  leave_days: number;
-  leave_date: string;
-  status: string;
-  reviewer_id: string;
-  audit_remarks: string;
-  remarks: string;
-  leave_date_formatted?: string;
+interface Course {
+  course_id: number;
+  name: string;
+  role: string;
+  department: string;
 }
 
 export default defineComponent(() => {
-  const leaves = ref<Leave[]>([]);
+  const courses = ref<Course[]>([]);
   const loading = ref(false);
   const page = ref(1);
   const pageSize = 20;
   const total = ref(0);
   const totalPages = ref(0);
 
-  // 格式化日期显示
-  const formatDate = (dateStr: string): string => {
-    if (!dateStr) return '';
-
-    // 解析ISO日期字符串
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return dateStr; // 如果解析失败，返回原始字符串
-
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const dateYear = date.getFullYear();
-
-    if (dateYear === currentYear) {
-      // 本年只显示月日
-      const month = date.getMonth() + 1;
-      const day = date.getDate();
-      return `${month}-${day}`;
-    } else {
-      // 非本年显示年月日
-      const year = date.getFullYear();
-      const month = date.getMonth() + 1;
-      const day = date.getDate();
-      return `${year}-${month}-${day}`;
-    }
-  };
-
-  // 获取请假数据
-  const fetchLeaves = (isRefresh = false) => {
+  // 获取审核员数据
+  const fetchCourses = (isRefresh = false) => {
     if (isRefresh) {
       page.value = 1;
-      leaves.value = [];
+      courses.value = [];
     }
 
     loading.value = true;
@@ -61,52 +29,46 @@ export default defineComponent(() => {
     });
 
     wx.request({
-      url: BASE_URL + '/leaves',
+      url: BASE_URL + '/courses',
       method: 'GET',
       data: {
         page: page.value,
         page_size: pageSize
       },
       success: (res) => {
-        console.log('请假API返回数据:', res.data);
+        console.log('审核员API返回数据:', res.data);
         const data = res.data as any;
 
         // 处理分页响应格式
-        let leavesData = [];
+        let coursesData = [];
         if (data && data.items && Array.isArray(data.items)) {
           // 新的分页格式: {items: [...], total: X, page: Y, page_size: Z, total_pages: W}
-          leavesData = data.items;
+          coursesData = data.items;
           total.value = data.total || 0;
           totalPages.value = data.total_pages || 0;
         } else if (data && Array.isArray(data)) {
           // 直接返回数组（向后兼容）
-          leavesData = data;
+          coursesData = data;
         } else if (data && data.list && Array.isArray(data.list)) {
           // 返回包含list的对象（向后兼容）
-          leavesData = data.list;
+          coursesData = data.list;
         } else if (data && typeof data === 'object' && !Array.isArray(data)) {
           // 返回单个对象，包装成数组（向后兼容）
-          leavesData = [data];
+          coursesData = [data];
         }
 
-        console.log('处理后的请假数据:', leavesData);
+        console.log('处理后的审核员数据:', coursesData);
         console.log('分页信息:', { page: page.value, total: total.value, totalPages: totalPages.value });
 
-        // 格式化日期字段
-        const formattedLeavesData = leavesData.map((leave: any) => ({
-          ...leave,
-          leave_date_formatted: formatDate(leave.leave_date)
-        }));
-
         if (isRefresh) {
-          leaves.value = formattedLeavesData;
+          courses.value = coursesData;
         } else {
-          leaves.value = [...leaves.value, ...formattedLeavesData];
+          courses.value = [...courses.value, ...coursesData];
         }
         wx.stopPullDownRefresh();
       },
       fail: (error) => {
-        console.error('获取请假数据失败:', error);
+        console.error('获取审核员数据失败:', error);
         wx.showToast({
           title: '加载失败',
           icon: 'error'
@@ -126,17 +88,21 @@ export default defineComponent(() => {
       // 检查是否还有更多页面
       if (totalPages.value === 0 || page.value < totalPages.value) {
         page.value++;
-        fetchLeaves();
+        fetchCourses();
       } else {
         console.log('没有更多数据了');
       }
     }
   };
 
+  // 刷新数据
+  const refreshData = () => {
+    fetchCourses(true);
+  };
 
   // 下拉刷新
   const onPullDownRefresh = () => {
-    fetchLeaves(true);
+    fetchCourses(true);
   };
 
   // 返回上一页
@@ -146,17 +112,18 @@ export default defineComponent(() => {
 
   // 页面加载时获取数据
   const onReady = () => {
-    fetchLeaves(true);
+    fetchCourses(true);
   };
 
   return {
-    leaves,
+    courses,
     loading,
     total,
     totalPages,
     page,
-    fetchLeaves,
+    fetchCourses,
     loadMore,
+    refreshData,
     onPullDownRefresh,
     goBack,
     onReady

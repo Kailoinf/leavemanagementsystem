@@ -8,8 +8,10 @@ import type { CountResponse } from '../types'
 const { data: studentResponse, fetchCount: getStudentCount, error: studentError } = useApiCount<Record<string, number>>('/students/count')
 const { data: leaveResponse, fetchCount: getLeavesCount, error: leaveError } = useApiCount<Record<string, number>>('/leaves/count')
 const { data: reviewerResponse, fetchCount: getReviewerCount, error: reviewerError } = useApiCount<Record<string, number>>('/reviewers/count')
+const { data: teacherResponse, fetchCount: getTeacherCount, error: teacherError } = useApiCount<Record<string, number>>('/teachers/count')
+const { data: courseResponse, fetchCount: getCourseCount, error: courseError } = useApiCount<Record<string, number>>('/courses/count')
 
-const { goToStudents, goToLeaves, goToReviewers } = useNavigation()
+const { goToStudents, goToLeaves, goToReviewers, goToTeachers, goToCourses } = useNavigation()
 
 // 合并错误状态
 const error = ref('')
@@ -27,11 +29,21 @@ const goToReviewersList = () => {
   goToReviewers()
 }
 
+const goToTeachersList = () => {
+  goToTeachers()
+}
+
+const goToCoursesList = () => {
+  goToCourses()
+}
+
 // 组件挂载时自动获取数据
 onMounted(() => {
   getStudentCount()
   getLeavesCount()
   getReviewerCount()
+  getTeacherCount()
+  getCourseCount()
 })
 </script>
 <template>
@@ -62,6 +74,20 @@ onMounted(() => {
         <div class="button-title">审核员管理</div>
         <div class="button-count">{{ reviewerResponse?.reviewers_count || 0 }}</div>
         <div class="button-description">管理审核人员</div>
+      </button>
+
+      <button @click="goToTeachersList" class="dashboard-button btn-success">
+        <div class="button-icon">👨‍🏫</div>
+        <div class="button-title">教师管理</div>
+        <div class="button-count">{{ teacherResponse?.teachers_count || 0 }}</div>
+        <div class="button-description">管理教师信息</div>
+      </button>
+
+      <button @click="goToCoursesList" class="dashboard-button btn-success">
+        <div class="button-icon">📚</div>
+        <div class="button-title">课程管理</div>
+        <div class="button-count">{{ courseResponse?.courses_count || 0 }}</div>
+        <div class="button-description">管理课程信息</div>
       </button>
     </div>
   </div>

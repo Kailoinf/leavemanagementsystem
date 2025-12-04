@@ -245,6 +245,100 @@
   font-weight: 600;
 }
 
+/* 分页控件样式 */
+.pagination-container {
+  margin-top: 24px;
+  padding: 20px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-pagination {
+  padding: 8px 16px;
+  min-width: 44px;
+  background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-pagination:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-pagination:disabled {
+  background: #6c757d;
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.pagination-info {
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #495057;
+  min-width: 120px;
+  text-align: center;
+}
+
+.pagination-input-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 8px;
+}
+
+.pagination-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #495057;
+  white-space: nowrap;
+}
+
+.pagination-input {
+  width: 60px;
+  padding: 6px 8px;
+  border: 2px solid #e9ecef;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #495057;
+  text-align: center;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.pagination-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.pagination-input:hover {
+  border-color: #dee2e6;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .container {
@@ -277,6 +371,37 @@
 
   .table-container {
     overflow-x: auto;
+  }
+
+  .pagination-controls {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .btn-pagination {
+    padding: 6px 12px;
+    min-width: 36px;
+    font-size: 14px;
+  }
+
+  .pagination-info {
+    font-size: 12px;
+    min-width: 100px;
+    padding: 0 12px;
+  }
+
+  .pagination-input-group {
+    margin: 0 4px;
+  }
+
+  .pagination-input {
+    width: 50px;
+    padding: 4px 6px;
+    font-size: 12px;
+  }
+
+  .pagination-label {
+    font-size: 12px;
   }
 }
 

@@ -1,10 +1,12 @@
 /* 通用类型定义 */
 
 export interface Student {
-  student_id: string
+  student_id: number
   name: string
   department: string
-  reviewer_id: string
+  reviewer_id: number
+  reviewer_name: string
+  password: string
   guarantee_permission: string
 }
 
@@ -15,7 +17,8 @@ export interface Leave {
   leave_days: number
   leave_date: string
   status: '已批准' | '待审批' | '已拒绝' | '已撤销'
-  reviewer_id: string
+  reviewer_id: number
+  reviewer_name: string
   audit_remarks: string
   remarks: string
 }
@@ -25,6 +28,20 @@ export interface Reviewer {
   name: string
   role: string
   department: string
+}
+
+export interface Course {
+  course_id: number
+  course_name: string
+  class_hours: number
+  teacher_id: number
+  teacher_name: string
+}
+
+export interface Teacher {
+  teacher_id: number
+  name: string
+  password: string
 }
 
 export interface ApiResponse<T> {
@@ -45,4 +62,12 @@ export interface DataState<T> {
   data: T[]
   loading: boolean
   error: string
+}
+
+export interface PaginatedResponse<T> {
+  items: T[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
 }

@@ -5,6 +5,8 @@ export default defineComponent(() => {
     const studentCount = ref(0);
     const leaveCount = ref(0);
     const reviewerCount = ref(0);
+    const teacherCount = ref(0);
+    const courseCount = ref(0);
 
     // 获取学生数量
     const getStudentCount = () => {
@@ -60,11 +62,46 @@ export default defineComponent(() => {
         });
     };
 
+    const getTeacherCount = () => {
+        console.log('获取教师数量');
+        wx.request({
+            url: BASE_URL + '/teachers/count',
+            method: 'GET',
+            success: (res) => {
+                console.log('教师数量获取成功:', res.data);
+                const data = res.data as any;
+                teacherCount.value = data?.teachers_count ?? data?.count ?? data ?? 0;
+            },
+            fail: (error) => {
+                console.error('教师数量获取失败:', error);
+                teacherCount.value = 0;
+            }
+        });
+    };
+
+    const getCourseCount = () => {
+        console.log('获取课程数量');
+        wx.request({
+            url: BASE_URL + '/courses/count',
+            method: 'GET',
+            success: (res) => {
+                console.log('课程数量获取成功:', res.data);
+                const data = res.data as any;
+                courseCount.value = data?.courses_count ?? data?.count ?? data ?? 0;
+            },
+            fail: (error) => {
+                console.error('课程数量获取失败:', error);
+                courseCount.value = 0;
+            }
+        })
+    }
     // 获取所有数据
     const getAllData = () => {
         getStudentCount();
         getLeaveCount();
         getReviewerCount();
+        getTeacherCount();
+        getCourseCount();
     };
 
     // 页面加载时自动获取数据
@@ -93,16 +130,41 @@ export default defineComponent(() => {
             url: '/pages/reviewers/index'
         });
     };
+    // 跳转到教师详情页面
+    const goToTeachers = () => {
+        wx.navigateTo({
+            url: '/pages/teachers/index'
+        });
+    };
+    // 跳转到课程详情页面
+    const goToCourses = () => {
+        wx.navigateTo({
+            url: '/pages/courses/index'
+        });
+    };
+
+    const scanCode = () => {
+        wx.scanCode({
+            success: (res) => {
+                console.log('扫码成功:', res);
+            },
+        });
+    };
 
     return {
         studentCount,
         leaveCount,
         reviewerCount,
+        teacherCount,
+        courseCount,
         getAllData,
         onReady,
         goToStudents,
         goToLeaves,
-        goToReviewers
+        goToReviewers,
+        goToTeachers,
+        goToCourses,
+        scanCode,
     };
 });
 

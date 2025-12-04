@@ -1,0 +1,28 @@
+<view class="container">
+
+  <view class="content">
+    <view class="table-header">
+      <text class="header-cell">课程ID</text>
+      <text class="header-cell">课程名</text>
+      <text class="header-cell">教师ID</text>
+      <text class="header-cell">课时</text>
+    </view>
+
+    <scroll-view scroll-y class="table-body" bindscrolltolower="loadMore">
+      <view wx:for="{{courses}}" wx:key="course_id" class="table-row">
+        <text class="cell">{{item.course_id}}</text>
+        <text class="cell">{{item.course_name}}</text>
+        <text class="cell">{{item.teacher_id}}</text>
+        <text class="cell">{{item.class_hours}}</text>
+      </view>
+
+      <view wx:if="{{loading}}" class="loading">
+        <text>加载中...</text>
+      </view>
+
+      <view wx:if="{{!loading && courses.length === 0}}" class="empty">
+        <text>暂无数据</text>
+      </view>
+    </scroll-view>
+  </view>
+</view>

@@ -1,0 +1,26 @@
+<view class="container">
+
+  <view class="content">
+    <view class="table-header">
+      <text class="header-cell">教师ID</text>
+      <text class="header-cell">姓名</text>
+      <text class="header-cell">密码</text>
+    </view>
+
+    <scroll-view scroll-y class="table-body" bindscrolltolower="loadMore">
+      <view wx:for="{{teachers}}" wx:key="teacher_id" class="table-row">
+        <text class="cell">{{item.teacher_id}}</text>
+        <text class="cell">{{item.name}}</text>
+        <text class="cell">{{item.password}}</text>
+      </view>
+
+      <view wx:if="{{loading}}" class="loading">
+        <text>加载中...</text>
+      </view>
+
+      <view wx:if="{{!loading && teachers.length === 0}}" class="empty">
+        <text>暂无数据</text>
+      </view>
+    </scroll-view>
+  </view>
+</view>

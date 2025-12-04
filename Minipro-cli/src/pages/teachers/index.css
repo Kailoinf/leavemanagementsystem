@@ -1,0 +1,93 @@
+.container {
+  height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.content {
+  padding: 0;
+}
+
+.table-header {
+  display: flex;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-cell {
+  flex: 1;
+  padding: 24rpx 8rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+  text-align: center;
+  border-right: 1px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-cell:last-child {
+  border-right: none;
+}
+
+.table-body {
+  height: calc(100vh - 120px);
+  background-color: #ffffff;
+}
+
+.table-row {
+  display: flex;
+  border-bottom: 1px solid #f0f0f0;
+  min-height: 140rpx;
+}
+
+.cell {
+  flex: 1;
+  padding: 16rpx 8rpx;
+  font-size: 28rpx;
+  color: #333;
+  text-align: center;
+  border-right: 1px solid #f0f0f0;
+  word-break: break-all;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140rpx;
+}
+
+.cell:last-child {
+  border-right: none;
+}
+
+.status-pending {
+  color: #ff9500;
+}
+
+.status-approved {
+  color: #34c759;
+}
+
+.status-rejected {
+  color: #ff3b30;
+}
+
+.table-row:active {
+  background-color: #f8f9fa;
+}
+
+.loading {
+  text-align: center;
+  padding: 40rpx;
+  color: #666;
+  font-size: 32rpx;
+}
+
+.empty {
+  text-align: center;
+  padding: 80rpx 40rpx;
+  color: #999;
+  font-size: 32rpx;
+}
