@@ -1,3 +1,36 @@
 <view class="mine">
+  <view wx:if="{{loading}}" class="loading">
+    <text>加载中...</text>
+  </view>
 
+  <view wx:else class="user-info">
+    <view class="user-header">
+      <view class="avatar">
+        <text class="avatar-text">{{userInfo.name ? userInfo.name.charAt(0) : '用'}}</text>
+      </view>
+      <view class="user-details">
+        <text class="user-name">{{userInfo.name || '未知用户'}}</text>
+        <text class="user-role">{{userInfo.role === 'student' ? '学生' : userInfo.role === 'teacher' ? '教师' : '管理员'}}</text>
+      </view>
+    </view>
+
+    <view class="info-list">
+      <view class="info-item">
+        <text class="info-label">姓名</text>
+        <text class="info-value">{{userInfo.name || '暂无'}}</text>
+      </view>
+      <view class="info-item">
+        <text class="info-label">角色</text>
+        <text class="info-value">{{userInfo.role === 'student' ? '学生' : userInfo.role === 'teacher' ? '教师' : '管理员'}}</text>
+      </view>
+      <view class="info-item">
+        <text class="info-label">学号/工号</text>
+        <text class="info-value">{{userInfo.id || '暂无'}}</text>
+      </view>
+    </view>
+
+    <view class="actions">
+      <button class="logout-btn" bindtap="handleLogout">退出登录</button>
+    </view>
+  </view>
 </view>

@@ -1,12 +1,12 @@
 import logging
-from datetime import datetime, timedelta
-from typing import List, Optional, Type, Any, Dict
+from datetime import datetime
+from typing import List, Optional, Type, Any, Dict, Union
 
 import bcrypt
 import toml
 from fastapi import FastAPI, Query, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlmodel import SQLModel, Field, create_engine, Session, select, func
 
 # =======================
@@ -48,36 +48,29 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 # =======================
-# 📦 数据模型（已移除明文兼容逻辑，仅保留哈希标记）
+# 📦 数据模型
 # =======================
 class Reviewer(SQLModel, table=True):
     reviewer_id: int = Field(primary_key=True)
     name: str = Field(max_length=8)
     school: Optional[str] = Field(max_length=8, default=None)
     role: Optional[str] = Field(max_length=10, default=None)
-    password: Optional[str] = Field(
-        max_length=60, default=None
-    )  # bcrypt hash ~60 chars
-    password_is_hashed: bool = Field(
-        default=True
-    )  # 默认为 True，表示新创建的用户密码已加密
+    password: Optional[str] = Field(max_length=60, default=None)
 
 
 class Student(SQLModel, table=True):
     student_id: int = Field(primary_key=True)
     name: str = Field(max_length=8)
     password: Optional[str] = Field(max_length=60, default=None)
-    password_is_hashed: bool = Field(default=True)  # 默认为 True
     school: Optional[str] = Field(max_length=8, default=None)
     reviewer_id: Optional[int] = Field(foreign_key="reviewer.reviewer_id", default=None)
-    guarantee_permission: datetime = Field(default=datetime.now() - timedelta(days=1))
+    guarantee_permission: datetime  # 权限时间：仅影响「担保他人」能力
 
 
 class Teacher(SQLModel, table=True):
     teacher_id: int = Field(primary_key=True)
     name: str = Field(max_length=8)
     password: Optional[str] = Field(max_length=60, default=None)
-    password_is_hashed: bool = Field(default=True)  # 默认为 True
 
 
 class Course(SQLModel, table=True):
@@ -109,16 +102,17 @@ class Leave(SQLModel, table=True):
 
 
 class Login(SQLModel, table=True):
-    login_id: int = Field(primary_key=True, default=None)
+    login_id: Optional[int] = Field(default=None, primary_key=True)
     user_role: str
     user_id: int
+    user_name: str
     token: str
-    login_time: datetime = Field(default=datetime.now())
+    login_time: datetime = Field(default_factory=datetime.now)
     can_be_used: bool = Field(default=True)
 
 
 # =======================
-# 🧩 Pydantic 响应模型
+# 🧩 Pydantic 模型
 # =======================
 class PaginatedResponse(BaseModel):
     items: List[Any]
@@ -135,6 +129,61 @@ class UserLogin(BaseModel):
     token: str
 
 
+class StudentCreate(BaseModel):
+    student_id: int
+    name: str = Field(max_length=8)
+    password: Optional[str] = None
+    school: Optional[str] = Field(max_length=8, default=None)
+    reviewer_id: Optional[int] = None
+    guarantee_permission: Union[datetime, str]
+
+    @field_validator("guarantee_permission", mode="before")
+    @classmethod
+    def parse_datetime(cls, v):
+        if isinstance(v, str):
+            return datetime.fromisoformat(v)
+        return v
+
+
+class TeacherCreate(BaseModel):
+    teacher_id: int
+    name: str = Field(max_length=8)
+    password: Optional[str] = None
+
+
+class ReviewerCreate(BaseModel):
+    reviewer_id: int
+    name: str = Field(max_length=8)
+    school: Optional[str] = Field(max_length=8, default=None)
+    role: Optional[str] = Field(max_length=10, default=None)
+    password: Optional[str] = None
+
+
+class LeaveCreate(BaseModel):
+    student_id: int
+    leave_date: Union[datetime, str]
+    class_hours: Optional[str] = Field(max_length=8, default=None)
+    leave_days: str = Field(max_length=8)
+    status: str = Field(max_length=8)
+    leave_type: Optional[str] = Field(max_length=8, default=None)
+    remarks: Optional[str] = Field(max_length=100, default=None)
+    materials: Optional[str] = Field(max_length=100, default=None)
+    reviewer_id: Optional[int] = None
+    teacher_id: Optional[int] = None
+    audit_remarks: Optional[str] = Field(max_length=100, default=None)
+    audit_time: Optional[Union[datetime, str]] = None
+    course_id: Optional[int] = None
+    is_modified: Optional[str] = Field(max_length=12, default=None)
+    guarantee_student_id: Optional[int] = None
+
+    @field_validator("leave_date", "audit_time", mode="before")
+    @classmethod
+    def parse_optional_datetime(cls, v):
+        if isinstance(v, str):
+            return datetime.fromisoformat(v)
+        return v
+
+
 # =======================
 # 🗄️ 数据库管理器
 # =======================
@@ -149,7 +198,7 @@ class DatabaseManager:
 
 
 db_manager = DatabaseManager()
-app = FastAPI(title="Leave Management System", version="2.0")
+app = FastAPI(title="Leave Management System", version="2.1")
 
 
 # =======================
@@ -179,7 +228,7 @@ def paginate_query(
     offset = (page - 1) * page_size
     items = session.exec(select(model).offset(offset).limit(page_size)).all()
 
-    # 🔑 动态获取主键列（兼容 student_id / leave_id 等）
+    # 🔑 动态获取主键列
     pk_cols = model.__table__.primary_key.columns
     if not pk_cols:
         raise RuntimeError(f"Model {model.__name__} has no primary key")
@@ -202,34 +251,45 @@ def get_by_id(session: Session, model: Type[SQLModel], id_value: int, id_field: 
 
 
 def inject_relations(
-    session: Session, items: List[SQLModel], relation_fields: Dict[str, tuple]
+    session: Session,
+    items: List[SQLModel],
+    relation_map: Dict[
+        str, tuple
+    ],  # field -> (model, pk_attr_name, target_attr, alias)
 ) -> List[dict]:
-    """批量注入关联数据（避免 N+1）"""
     item_dicts = [item.model_dump() for item in items]
 
-    # 收集 ID
+    # 收集各模型需查询的 ID
     id_map: Dict[type, set] = {}
-    for field, (rel_model, _) in relation_fields.items():
-        ids = {d[field] for d in item_dicts if d.get(field)}
+    for field, (rel_model, pk_attr_name, _, _) in relation_map.items():
+        ids = {d[field] for d in item_dicts if d.get(field) is not None}
         if ids:
             id_map[rel_model] = id_map.get(rel_model, set()) | ids
 
-    # 批量查
-    cache: Dict[type, Dict[int, Any]] = {}
+    # 批量查询并缓存
+    cache: Dict[type, Dict[Any, Any]] = {}
     for rel_model, ids in id_map.items():
-        pk_name = rel_model.__table__.primary_key.columns.keys()[0]
-        pk_attr = getattr(rel_model, pk_name)
+        # 找到这个模型对应的第一个relation配置
+        relation_key = [k for k in relation_map if relation_map[k][0] == rel_model][0]
+        pk_attr_name = relation_map[relation_key][1]  # 获取主键属性名
+
+        pk_attr = getattr(rel_model, pk_attr_name)  # 获取主键属性
         stmt = select(rel_model).where(pk_attr.in_(ids))
         objs = session.exec(stmt).all()
-        cache[rel_model] = {getattr(obj, pk_name): obj for obj in objs}
+        cache[rel_model] = {getattr(obj, pk_attr_name): obj for obj in objs}
 
-    # 注入
+    # 注入字段
     for d in item_dicts:
-        for field, (rel_model, alias) in relation_fields.items():
+        for field, (
+            rel_model,
+            pk_attr_name,
+            target_attr,
+            alias,
+        ) in relation_map.items():
             rid = d.get(field)
-            if rid and rel_model in cache and rid in cache[rel_model]:
+            if rid is not None and rel_model in cache and rid in cache[rel_model]:
                 obj = cache[rel_model][rid]
-                d[alias] = getattr(obj, "name", None)
+                d[alias] = getattr(obj, target_attr, None)
             else:
                 d[alias] = None
 
@@ -239,24 +299,42 @@ def inject_relations(
 # =======================
 # 🌐 依赖项
 # =======================
-def get_db_session():
-    return next(db_manager.get_session())
 
 
-def check_login(token: str, session: Session = Depends(get_db_session)):
-    # 查找登录记录
-    login_record = session.exec(select(Login).where(Login.token == token)).first()
+def check_login(token: str, session: Session = Depends(db_manager.get_session)):
+    login_records = session.exec(
+        select(Login).where(Login.token == token).order_by(Login.login_id.desc())
+    ).all()
+    # 找到第一个can_be_used为true的记录
+    login_record = next(
+        (record for record in login_records if record.can_be_used), None
+    )
 
-    # 如果没有找到记录，抛出异常
+    if not login_record:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    if not login_record.can_be_used:
+        raise HTTPException(status_code=401, detail="Token is disabled")
+    return {
+        "role": login_record.user_role,
+        "id": login_record.user_id,
+        "name": login_record.user_name,
+    }
+
+
+def logout(token: str, session: Session = Depends(db_manager.get_session)):
+    # 将对应token的登录记录标记为不可用（使用与check_login相同的逻辑）
+    login_records = session.exec(
+        select(Login).where(Login.token == token).order_by(Login.login_id.desc())
+    ).all()
+    login_record = next((record for record in login_records if record.can_be_used), None)
+
     if not login_record:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    # 如果记录不可用，抛出异常
-    if not login_record.can_be_used:
-        raise HTTPException(status_code=401, detail="Token is disabled")
-
-    # 返回角色和ID
-    return {"role": login_record.user_role, "id": login_record.user_id}
+    login_record.can_be_used = False
+    session.add(login_record)
+    session.commit()
+    return {"message": "Successfully logged out"}
 
 
 # =======================
@@ -274,11 +352,13 @@ async def root():
 def read_students(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    session: Session = Depends(get_db_session),
+    session: Session = Depends(db_manager.get_session),
 ):
     students, total, total_pages = paginate_query(session, Student, page, page_size)
     items = inject_relations(
-        session, students, {"reviewer_id": (Reviewer, "reviewer_name")}
+        session,
+        students,
+        {"reviewer_id": (Reviewer, "reviewer_id", "name", "reviewer_name")},
     )
     return PaginatedResponse(
         items=items,
@@ -290,31 +370,29 @@ def read_students(
 
 
 @app.get("/students/count")
-def students_count(session: Session = Depends(get_db_session)):
+def students_count(session: Session = Depends(db_manager.get_session)):
     return {
         "students_count": session.exec(select(func.count(Student.student_id))).one()
     }
 
 
 @app.get("/students/{student_id}", response_model=Student)
-def read_student(student_id: int, session: Session = Depends(get_db_session)):
+def read_student(student_id: int, session: Session = Depends(db_manager.get_session)):
     return get_by_id(session, Student, student_id, "student_id")
 
 
 @app.post("/students", response_model=Student, summary="创建学生")
 def create_student_endpoint(
-    student: Student, session: Session = Depends(get_db_session)
+    student_data: StudentCreate,
+    session: Session = Depends(db_manager.get_session),
 ):
+    # 显式创建 datetime 对象，避免共享
+    student = Student(
+        **student_data.model_dump(exclude={"guarantee_permission"}),
+        guarantee_permission=student_data.guarantee_permission,
+    )
     if student.password:
         student.password = hash_password(student.password)
-
-    if isinstance(student.guarantee_permission, str):
-        try:
-            student.guarantee_permission = datetime.fromisoformat(
-                student.guarantee_permission
-            )
-        except ValueError:
-            raise HTTPException(400, "Invalid datetime format for guarantee_permission")
     session.add(student)
     session.commit()
     session.refresh(student)
@@ -326,7 +404,7 @@ def create_student_endpoint(
 def read_teachers(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    session: Session = Depends(get_db_session),
+    session: Session = Depends(db_manager.get_session),
 ):
     teachers, total, total_pages = paginate_query(session, Teacher, page, page_size)
     return PaginatedResponse(
@@ -339,24 +417,25 @@ def read_teachers(
 
 
 @app.get("/teachers/count")
-def teachers_count(session: Session = Depends(get_db_session)):
+def teachers_count(session: Session = Depends(db_manager.get_session)):
     return {
         "teachers_count": session.exec(select(func.count(Teacher.teacher_id))).one()
     }
 
 
 @app.get("/teachers/{teacher_id}", response_model=Teacher)
-def read_teacher(teacher_id: int, session: Session = Depends(get_db_session)):
+def read_teacher(teacher_id: int, session: Session = Depends(db_manager.get_session)):
     return get_by_id(session, Teacher, teacher_id, "teacher_id")
 
 
 @app.post("/teachers", response_model=Teacher, summary="创建教师")
 def create_teacher_endpoint(
-    teacher: Teacher, session: Session = Depends(get_db_session)
+    teacher_data: TeacherCreate,
+    session: Session = Depends(db_manager.get_session),
 ):
+    teacher = Teacher(**teacher_data.model_dump())
     if teacher.password:
         teacher.password = hash_password(teacher.password)
-        # password_is_hashed 默认为 True
     session.add(teacher)
     session.commit()
     session.refresh(teacher)
@@ -368,11 +447,13 @@ def create_teacher_endpoint(
 def read_courses(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    session: Session = Depends(get_db_session),
+    session: Session = Depends(db_manager.get_session),
 ):
     courses, total, total_pages = paginate_query(session, Course, page, page_size)
     items = inject_relations(
-        session, courses, {"teacher_id": (Teacher, "teacher_name")}
+        session,
+        courses,
+        {"teacher_id": (Teacher, "teacher_id", "name", "teacher_name")},
     )
     return PaginatedResponse(
         items=items,
@@ -384,17 +465,19 @@ def read_courses(
 
 
 @app.get("/courses/count")
-def courses_count(session: Session = Depends(get_db_session)):
+def courses_count(session: Session = Depends(db_manager.get_session)):
     return {"courses_count": session.exec(select(func.count(Course.course_id))).one()}
 
 
 @app.get("/courses/{course_id}", response_model=Course)
-def read_course(course_id: int, session: Session = Depends(get_db_session)):
+def read_course(course_id: int, session: Session = Depends(db_manager.get_session)):
     return get_by_id(session, Course, course_id, "course_id")
 
 
 @app.post("/courses", response_model=Course)
-def create_course_endpoint(course: Course, session: Session = Depends(get_db_session)):
+def create_course_endpoint(
+    course: Course, session: Session = Depends(db_manager.get_session)
+):
     session.add(course)
     session.commit()
     session.refresh(course)
@@ -406,7 +489,7 @@ def create_course_endpoint(course: Course, session: Session = Depends(get_db_ses
 def read_reviewers(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    session: Session = Depends(get_db_session),
+    session: Session = Depends(db_manager.get_session),
 ):
     reviewers, total, total_pages = paginate_query(session, Reviewer, page, page_size)
     return PaginatedResponse(
@@ -419,24 +502,25 @@ def read_reviewers(
 
 
 @app.get("/reviewers/count")
-def reviewers_count(session: Session = Depends(get_db_session)):
+def reviewers_count(session: Session = Depends(db_manager.get_session)):
     return {
         "reviewers_count": session.exec(select(func.count(Reviewer.reviewer_id))).one()
     }
 
 
 @app.get("/reviewers/{reviewer_id}", response_model=Reviewer)
-def read_reviewer(reviewer_id: int, session: Session = Depends(get_db_session)):
+def read_reviewer(reviewer_id: int, session: Session = Depends(db_manager.get_session)):
     return get_by_id(session, Reviewer, reviewer_id, "reviewer_id")
 
 
 @app.post("/reviewers", response_model=Reviewer, summary="创建审核员")
 def create_reviewer_endpoint(
-    reviewer: Reviewer, session: Session = Depends(get_db_session)
+    reviewer_data: ReviewerCreate,
+    session: Session = Depends(db_manager.get_session),
 ):
+    reviewer = Reviewer(**reviewer_data.model_dump())
     if reviewer.password:
         reviewer.password = hash_password(reviewer.password)
-        # password_is_hashed 默认为 True
     session.add(reviewer)
     session.commit()
     session.refresh(reviewer)
@@ -448,25 +532,35 @@ def create_reviewer_endpoint(
 def read_leaves(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    session: Session = Depends(get_db_session),
+    session: Session = Depends(db_manager.get_session),
 ):
     leaves, total, total_pages = paginate_query(session, Leave, page, page_size)
     items = inject_relations(
         session,
         leaves,
         {
-            "student_id": (Student, "student_name"),
-            "reviewer_id": (Reviewer, "reviewer_name"),
-            "teacher_id": (Teacher, "teacher_name"),
-            "guarantee_student_id": (Student, "guarantee_student_name"),
+            "student_id": (Student, "student_id", "name", "student_name"),
+            "reviewer_id": (Reviewer, "reviewer_id", "name", "reviewer_name"),
+            "teacher_id": (Teacher, "teacher_id", "name", "teacher_name"),
+            "guarantee_student_id": (
+                Student,
+                "student_id",
+                "name",
+                "guarantee_student_name",
+            ),
         },
     )
-    # 手动补 course_name（因 Course 无 name 字段）
-    for item in items:
-        if item.get("course_id"):
-            course = session.get(Course, item["course_id"])
-            item["course_name"] = course.course_name if course else None
-        else:
+    # 补充 course_name
+    course_ids = {item["course_id"] for item in items if item.get("course_id")}
+    if course_ids:
+        courses = session.exec(
+            select(Course).where(Course.course_id.in_(course_ids))
+        ).all()
+        course_map = {c.course_id: c.course_name for c in courses}
+        for item in items:
+            item["course_name"] = course_map.get(item.get("course_id"))
+    else:
+        for item in items:
             item["course_name"] = None
     return PaginatedResponse(
         items=items,
@@ -478,12 +572,16 @@ def read_leaves(
 
 
 @app.get("/leaves/count")
-def leaves_count(session: Session = Depends(get_db_session)):
+def leaves_count(session: Session = Depends(db_manager.get_session)):
     return {"leaves_count": session.exec(select(func.count(Leave.leave_id))).one()}
 
 
 @app.post("/leaves", response_model=Leave)
-def create_leave_endpoint(leave: Leave, session: Session = Depends(get_db_session)):
+def create_leave_endpoint(
+    leave_data: LeaveCreate,
+    session: Session = Depends(db_manager.get_session),
+):
+    leave = Leave(**leave_data.model_dump())
     session.add(leave)
     session.commit()
     session.refresh(leave)
@@ -491,24 +589,30 @@ def create_leave_endpoint(leave: Leave, session: Session = Depends(get_db_sessio
 
 
 @app.get("/leaves/student/{student_id}", response_model=List[Leave])
-def read_leaves_by_student(student_id: int, session: Session = Depends(get_db_session)):
+def read_leaves_by_student(
+    student_id: int, session: Session = Depends(db_manager.get_session)
+):
     return session.exec(select(Leave).where(Leave.student_id == student_id)).all()
 
 
 @app.get("/leaves/reviewer/{reviewer_id}", response_model=List[Leave])
 def read_leaves_by_reviewer(
-    reviewer_id: int, session: Session = Depends(get_db_session)
+    reviewer_id: int, session: Session = Depends(db_manager.get_session)
 ):
     return session.exec(select(Leave).where(Leave.reviewer_id == reviewer_id)).all()
 
 
 @app.get("/leaves/course/{course_id}", response_model=List[Leave])
-def read_leaves_by_course(course_id: int, session: Session = Depends(get_db_session)):
+def read_leaves_by_course(
+    course_id: int, session: Session = Depends(db_manager.get_session)
+):
     return session.exec(select(Leave).where(Leave.course_id == course_id)).all()
 
 
 @app.get("/leaves/teacher/{teacher_id}", response_model=List[Leave])
-def read_leaves_by_teacher(teacher_id: int, session: Session = Depends(get_db_session)):
+def read_leaves_by_teacher(
+    teacher_id: int, session: Session = Depends(db_manager.get_session)
+):
     course_ids = session.exec(
         select(Course.course_id).where(Course.teacher_id == teacher_id)
     ).all()
@@ -519,13 +623,12 @@ def read_leaves_by_teacher(teacher_id: int, session: Session = Depends(get_db_se
 
 # --- 🔐 登录  ---
 @app.post("/login", summary="登录")
-def login(user: UserLogin, session: Session = Depends(get_db_session)):
+def login(user: UserLogin, session: Session = Depends(db_manager.get_session)):
     role_model_map = {
         "teacher": (Teacher, "teacher_id"),
         "student": (Student, "student_id"),
         "reviewer": (Reviewer, "reviewer_id"),
     }
-
     if user.role not in role_model_map:
         raise HTTPException(400, "Invalid role")
 
@@ -535,19 +638,13 @@ def login(user: UserLogin, session: Session = Depends(get_db_session)):
     if not obj.password:
         raise HTTPException(401, "User has no password set")
 
-    # 假设所有现有密码都已加密，直接进行 bcrypt 验证
-    if verify_password(user.password, obj.password):
-        authenticated = True
-    else:
-        authenticated = False
-
-    if not authenticated:
+    if not verify_password(user.password, obj.password):
         raise HTTPException(401, "Invalid credentials")
 
-    # 把账号角色id都存到一个表中，作为已登录的账号
     login_record = Login(
         user_role=user.role,
         user_id=user.id,
+        user_name=obj.name,
         token=user.token,
     )
     session.add(login_record)
@@ -557,10 +654,43 @@ def login(user: UserLogin, session: Session = Depends(get_db_session)):
         "role": user.role,
         "id": user.id,
         "name": obj.name,
+        "token": user.token,  # 返回 token，前端需保存
     }
 
 
 @app.get("/login/check")
-def login_check(token: str, session: Session = Depends(get_db_session)):
+def login_check(token: str, session: Session = Depends(db_manager.get_session)):
     """检查登录状态"""
     return check_login(token, session)
+
+
+@app.get("/logout")
+def log_out(token: str, session: Session = Depends(db_manager.get_session)):
+    return logout(token, session)
+
+
+@app.get("/login/orcode")
+def login_qrcode(
+    token: str,
+    login_token: str,
+    session_check: Session = Depends(
+        db_manager.get_session,
+    ),
+    session_login: Session = Depends(db_manager.get_session),
+):
+    obj = check_login(token, session_check)
+    if "detail" not in obj:
+        login_record = Login(
+            user_role=obj["role"],
+            user_id=obj["id"],
+            user_name=obj["name"],
+            token=login_token,
+        )
+        session_login.add(login_record)
+        session_login.commit()
+        return {
+            "role": obj["role"],
+            "id": obj["id"],
+            "name": obj["name"],
+            "token": login_token,
+        }

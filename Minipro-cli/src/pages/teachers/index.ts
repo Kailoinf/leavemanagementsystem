@@ -1,11 +1,12 @@
 import { defineComponent, ref } from '@vue-mini/core';
 import { BASE_URL } from '@/app';
+import { requireAuth } from '@/utils/auth';
 
 interface Teacher {
   teacher_id: number;
   name: string;
   role: string;
-  department: string;
+  school: string;
 }
 
 export default defineComponent(() => {
@@ -110,9 +111,18 @@ export default defineComponent(() => {
     wx.navigateBack();
   };
 
+  // 检查登录状态并获取数据
+  const initializePage = async () => {
+    const userInfo = await requireAuth();
+    if (userInfo) {
+      console.log('页面加载完成，自动获取数据');
+      fetchTeachers(true);
+    }
+  };
+
   // 页面加载时获取数据
   const onReady = () => {
-    fetchTeachers(true);
+    initializePage();
   };
 
   return {

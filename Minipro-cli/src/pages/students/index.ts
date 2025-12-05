@@ -1,11 +1,12 @@
 import { defineComponent, ref } from '@vue-mini/core';
 import { BASE_URL } from '@/app';
+import { requireAuth } from '@/utils/auth';
 
 interface Student {
   id?: number;
   student_id: string;
   name: string;
-  department: string;
+  school: string;
   reviewer_id: string;
   guarantee_permission: string;
   guarantee_permission_formatted?: string;
@@ -145,9 +146,17 @@ export default defineComponent(() => {
     wx.navigateBack();
   };
 
+  // 检查登录状态并获取数据
+  const initializePage = async () => {
+    const userInfo = await requireAuth();
+    if (userInfo) {
+      fetchStudents(true);
+    }
+  };
+
   // 页面加载时获取数据
   const onReady = () => {
-    fetchStudents(true);
+    initializePage();
   };
 
   return {

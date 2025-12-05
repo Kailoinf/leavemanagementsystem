@@ -1,5 +1,6 @@
 import { defineComponent, ref } from '@vue-mini/core';
-import { BASE_URL } from '@/app'
+import { BASE_URL } from '@/app';
+import { requireAuth } from '@/utils/auth';
 
 export default defineComponent(() => {
     const studentCount = ref(0);
@@ -104,10 +105,23 @@ export default defineComponent(() => {
         getCourseCount();
     };
 
+    // 检查登录状态并获取数据
+    const initializePage = async () => {
+        const userInfo = await requireAuth();
+        if (userInfo) {
+            console.log('页面加载完成，自动获取数据');
+            getAllData();
+        }
+    };
+
     // 页面加载时自动获取数据
     const onReady = () => {
-        console.log('页面加载完成，自动获取数据');
-        getAllData();
+        initializePage();
+    };
+
+    // 页面显示时检查登录状态
+    const onShow = () => {
+        initializePage();
     };
 
     // 跳转到学生详情页面
@@ -146,8 +160,39 @@ export default defineComponent(() => {
     const scanCode = () => {
         wx.scanCode({
             success: (res) => {
-                console.log('扫码成功:', res);
+                const token = wx.getStorageSync('token');
+                const loginToken = res.result; // 扫码结果作为 login_token
+
+                wx.request({
+                    url: `${BASE_URL}/login/orcode`,
+                    method: 'GET',
+                    data: {
+                        token: token,
+                        login_token: loginToken
+                    },
+                    success: (response) => {
+                        console.log('二维码登录成功:', response.data);
+                        wx.showToast({
+                            title: '登录成功',
+                            icon: 'success'
+                        });
+                    },
+                    fail: (error) => {
+                        console.error('二维码登录失败:', error);
+                        wx.showToast({
+                            title: '登录失败',
+                            icon: 'error'
+                        });
+                    }
+                });
             },
+            fail: (error) => {
+                console.error('扫码失败:', error);
+                wx.showToast({
+                    title: '扫码失败',
+                    icon: 'error'
+                });
+            }
         });
     };
 
@@ -159,6 +204,7 @@ export default defineComponent(() => {
         courseCount,
         getAllData,
         onReady,
+        onShow,
         goToStudents,
         goToLeaves,
         goToReviewers,

@@ -39,3 +39,41 @@ export const postData = async (url: string, data?: any) => {
     throw error
   }
 }
+
+// 登录API
+export const login = async (loginData: {
+  role: string
+  id: string
+  password: string
+  token: string
+}) => {
+  try {
+    const response = await http.post('/login', loginData)
+    return response
+  } catch (error) {
+    console.error('登录失败:', error)
+    throw error
+  }
+}
+
+// 检查登录状态API
+export const checkAuth = async (token: string) => {
+  try {
+    const response = await http.get(`/login/check?token=${token}`)
+    return response
+  } catch (error) {
+    console.error('检查登录状态失败:', error)
+    throw error
+  }
+}
+
+// 退出登录API
+export const logout = async (token: string) => {
+  try {
+    const response = await http.get(`/logout?token=${token}`)
+    return response
+  } catch (error) {
+    console.error('退出登录失败:', error)
+    throw error
+  }
+}

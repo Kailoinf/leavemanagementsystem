@@ -2,6 +2,7 @@
   "darkmode": true,
   "themeLocation": "theme.json",
   "pages": [
+    "pages/login/index",
     "pages/home/index",
     "pages/mine/index",
     "pages/students/index",

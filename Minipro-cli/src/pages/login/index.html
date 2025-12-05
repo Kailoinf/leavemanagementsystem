@@ -1,0 +1,57 @@
+<view class="login">
+  <view class="login-container">
+    <view class="login-header">
+      <text class="login-title">登录系统</text>
+    </view>
+
+    <view class="login-form">
+      <!-- 角色选择 -->
+      <view class="form-item">
+        <text class="form-label">角色</text>
+        <picker
+          mode="selector"
+          range="{{roleOptions}}"
+          range-key="text"
+          value="{{selectedRoleIndex}}"
+          bindchange="onRoleChange"
+        >
+          <view class="picker">
+            {{roleOptions[selectedRoleIndex].text}}
+          </view>
+        </picker>
+      </view>
+
+      <!-- 账号输入 -->
+      <view class="form-item">
+        <text class="form-label">账号</text>
+        <input
+          class="form-input"
+          placeholder="请输入账号"
+          value="{{loginForm.id}}"
+          bindinput="onIdInput"
+        />
+      </view>
+
+      <!-- 密码输入 -->
+      <view class="form-item">
+        <text class="form-label">密码</text>
+        <input
+          class="form-input"
+          placeholder="请输入密码"
+          password="{{true}}"
+          value="{{loginForm.password}}"
+          bindinput="onPasswordInput"
+        />
+      </view>
+
+      <!-- 登录按钮 -->
+      <button
+        class="login-btn {{loading ? 'loading' : ''}}"
+        bindtap="handleLogin"
+        disabled="{{loading}}"
+      >
+        {{loading ? '登录中...' : '登录'}}
+      </button>
+    </view>
+  </view>
+</view>

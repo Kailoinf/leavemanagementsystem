@@ -8,19 +8,19 @@ import sys
 import os
 from datetime import datetime, timedelta
 import random
-from sqlmodel import Session # 只导入 Session，不直接导入 engine
+from sqlmodel import Session  # 只导入 Session，不直接导入 engine
 
 # 添加当前目录到Python路径
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from main import ( # 导入 DatabaseManager 和其他模型
-    DatabaseManager, # 用于创建引擎和会话
+from main import (  # 导入 DatabaseManager 和其他模型
+    DatabaseManager,  # 用于创建引擎和会话
     Reviewer,
     Student,
     Teacher,
     Leave,
     Course,
-    hash_password, # 导入密码哈希函数
+    hash_password,  # 导入密码哈希函数
 )
 
 
@@ -60,19 +60,16 @@ def create_test_reviewers(session: Session):
     created_reviewers = []
     for reviewer_data in reviewers_data:
         # 处理密码
-        password_plain = reviewer_data.pop('password', None) # 从字典中取出密码
-        reviewer = Reviewer(**reviewer_data) # 用剩余数据创建对象
+        password_plain = reviewer_data.pop("password", None)  # 从字典中取出密码
+        reviewer = Reviewer(**reviewer_data)  # 用剩余数据创建对象
         if password_plain:
-            reviewer.password = hash_password(password_plain) # 哈希密码
-            reviewer.password_is_hashed = True # 标记为已哈希
-        else:
-            reviewer.password_is_hashed = False # 没有密码则标记为False
+            reviewer.password = hash_password(password_plain)  # 哈希密码
 
         session.add(reviewer)
         created_reviewers.append(reviewer)
         print(f"创建审核员: {reviewer.name} (ID: {reviewer.reviewer_id})")
 
-    session.commit() # 统一提交
+    session.commit()  # 统一提交
     return created_reviewers
 
 
@@ -88,13 +85,10 @@ def create_test_teachers(session: Session):
     created_teachers = []
     for teacher_data in teachers_data:
         # 处理密码
-        password_plain = teacher_data.pop('password', None)
+        password_plain = teacher_data.pop("password", None)
         teacher = Teacher(**teacher_data)
         if password_plain:
             teacher.password = hash_password(password_plain)
-            teacher.password_is_hashed = True
-        else:
-            teacher.password_is_hashed = False
 
         session.add(teacher)
         created_teachers.append(teacher)
@@ -181,16 +175,14 @@ def create_test_students(session: Session, reviewers):
             "school": random.choice(schools),
             "reviewer_id": random.choice(reviewers).reviewer_id,
             # guarantee_permission 已经是 datetime 对象，无需转换
-            "guarantee_permission": datetime.now() + timedelta(days=random.randint(1, 365)),
+            "guarantee_permission": datetime.now()
+            + timedelta(days=random.randint(1, 365)),
         }
         # 处理密码
-        password_plain = student_data.pop('password', None)
+        password_plain = student_data.pop("password", None)
         student = Student(**student_data)
         if password_plain:
             student.password = hash_password(password_plain)
-            student.password_is_hashed = True
-        else:
-            student.password_is_hashed = False
 
         session.add(student)
         created_students.append(student)
@@ -227,11 +219,15 @@ def create_test_leaves(session: Session, students, courses, reviewers):
                 "materials": "请假条.png" if random.random() > 0.5 else None,
                 "reviewer_id": random.choice(reviewers).reviewer_id,
                 "teacher_id": random.choice(courses).teacher_id,
-                "audit_remarks": "审核通过" if random.random() > 0.3 else "需要补充材料",
+                "audit_remarks": "审核通过"
+                if random.random() > 0.3
+                else "需要补充材料",
                 "audit_time": leave_date + timedelta(hours=random.randint(1, 24)),
                 "course_id": random.choice(courses).course_id,
                 "is_modified": "否",
-                "guarantee_student_id": random.choice(students).student_id if random.random() > 0.7 else None,
+                "guarantee_student_id": random.choice(students).student_id
+                if random.random() > 0.7
+                else None,
             }
 
             leave = Leave(**leave_data)

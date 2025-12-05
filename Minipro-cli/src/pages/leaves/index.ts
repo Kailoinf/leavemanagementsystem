@@ -1,5 +1,6 @@
 import { defineComponent, ref } from '@vue-mini/core';
-import { BASE_URL } from '@/app'
+import { BASE_URL } from '@/app';
+import { requireAuth } from '@/utils/auth';
 
 interface Leave {
   leave_id: number;
@@ -144,9 +145,18 @@ export default defineComponent(() => {
     wx.navigateBack();
   };
 
+  // 检查登录状态并获取数据
+  const initializePage = async () => {
+    const userInfo = await requireAuth();
+    if (userInfo) {
+      console.log('页面加载完成，自动获取数据');
+      fetchLeaves(true);
+    }
+  };
+
   // 页面加载时获取数据
   const onReady = () => {
-    fetchLeaves(true);
+    initializePage();
   };
 
   return {
