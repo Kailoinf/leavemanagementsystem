@@ -47,23 +47,6 @@ def verify_password(plain: str, hashed: str) -> bool:
         return False
 
 
-def check_login(token: str):
-    with Session() as session:
-        # 查找登录记录
-        login_record = session.exec(select(Login).where(Login.token == token)).first()
-
-        # 如果没有找到记录，抛出异常
-        if not login_record:
-            raise HTTPException(status_code=401, detail="Invalid token")
-
-        # 如果记录不可用，抛出异常
-        if not login_record.can_be_used:
-            raise HTTPException(status_code=401, detail="Token is disabled")
-
-        # 返回角色和ID
-        return {"role": login_record.user_role, "id": login_record.user_id}
-
-
 # =======================
 # 📦 数据模型（已移除明文兼容逻辑，仅保留哈希标记）
 # =======================
@@ -258,6 +241,22 @@ def inject_relations(
 # =======================
 def get_db_session():
     return next(db_manager.get_session())
+
+
+def check_login(token: str, session: Session = Depends(get_db_session)):
+    # 查找登录记录
+    login_record = session.exec(select(Login).where(Login.token == token)).first()
+
+    # 如果没有找到记录，抛出异常
+    if not login_record:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    # 如果记录不可用，抛出异常
+    if not login_record.can_be_used:
+        raise HTTPException(status_code=401, detail="Token is disabled")
+
+    # 返回角色和ID
+    return {"role": login_record.user_role, "id": login_record.user_id}
 
 
 # =======================
@@ -518,7 +517,7 @@ def read_leaves_by_teacher(teacher_id: int, session: Session = Depends(get_db_se
     return session.exec(select(Leave).where(Leave.course_id.in_(course_ids))).all()
 
 
-# --- 🔐 登录 & 密码管理 ---
+# --- 🔐 登录  ---
 @app.post("/login", summary="登录")
 def login(user: UserLogin, session: Session = Depends(get_db_session)):
     role_model_map = {
@@ -558,5 +557,10 @@ def login(user: UserLogin, session: Session = Depends(get_db_session)):
         "role": user.role,
         "id": user.id,
         "name": obj.name,
-        "need_change_password": False,  # 移除了需要更改密码的逻辑
     }
+
+
+@app.get("/login/check")
+def login_check(token: str, session: Session = Depends(get_db_session)):
+    """检查登录状态"""
+    return check_login(token, session)
