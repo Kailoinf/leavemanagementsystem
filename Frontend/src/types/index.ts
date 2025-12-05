@@ -3,7 +3,7 @@
 export interface Student {
   student_id: number
   name: string
-  department: string
+  school: string
   reviewer_id: number
   reviewer_name: string
   password: string
@@ -27,7 +27,7 @@ export interface Reviewer {
   reviewer_id: string
   name: string
   role: string
-  department: string
+  school: string
 }
 
 export interface Course {

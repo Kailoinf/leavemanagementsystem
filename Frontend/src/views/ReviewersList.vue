@@ -65,7 +65,7 @@ onMounted(() => {
                 <td>
                   <span class="badge badge-primary">{{ reviewer.role }}</span>
                 </td>
-                <td>{{ reviewer.department }}</td>
+                <td>{{ reviewer.school }}</td>
               </tr>
             </tbody>
           </table>

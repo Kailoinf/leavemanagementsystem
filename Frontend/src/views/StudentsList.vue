@@ -65,7 +65,7 @@ onMounted(() => {
               <tr v-for="student in students" :key="student.student_id">
                 <td>{{ student.student_id }}</td>
                 <td>{{ student.name }}</td>
-                <td>{{ student.department }}</td>
+                <td>{{ student.school }}</td>
                 <td>{{ student.reviewer_id }}</td>
                 <td>{{ student.reviewer_name }}</td>
                 <td>{{ formatDate(student.guarantee_permission) }}</td>
