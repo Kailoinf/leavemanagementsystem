@@ -54,6 +54,7 @@ export interface Course {
   class_hours: number
   teacher_id: number
   teacher_name: string
+  enrollment_count?: number // 可选的选课人数字段
 }
 
 export interface Teacher {
@@ -115,4 +116,29 @@ export interface HealthCheckResponse {
   status: 'healthy' | 'unhealthy'
   message?: string
   timestamp?: string
+}
+
+// 学生选课相关类型
+export interface StudentCourse {
+  student_id: number
+  course_id: number
+  enrollment_date: string
+  status: string
+}
+
+export interface StudentCourseCreate {
+  student_id: number
+  course_id: number
+  enrollment_date?: string
+  status?: string
+}
+
+export interface StudentCourseResponse {
+  student_id: number
+  course_id: number
+  enrollment_date: string | null
+  status: string
+  student_name: string | null
+  course_name: string | null
+  teacher_name: string | null
 }

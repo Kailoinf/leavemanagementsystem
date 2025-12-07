@@ -1,4 +1,4 @@
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func
 from fastapi import HTTPException
 
 from app.models import StudentCourse, Student, Course, Teacher

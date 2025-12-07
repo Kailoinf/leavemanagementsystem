@@ -175,3 +175,108 @@ export const createLeave = async (leaveData: any) => {
     throw error
   }
 }
+
+// 学生选课API
+export const createStudentCourse = async (studentCourseData: {
+  student_id: number
+  course_id: number
+  enrollment_date?: string
+  status?: string
+}) => {
+  try {
+    // 获取token作为查询参数
+    const token = localStorage.getItem('token')
+
+    // 构建查询参数
+    const params: any = {}
+    if (token) {
+      params.token = token
+    }
+
+    console.log('学生选课数据:', studentCourseData)
+
+    // POST请求，token通过查询参数传递
+    const response = await http.post('/student-courses', studentCourseData, { params })
+    console.log('学生选课成功:', response)
+    return response
+  } catch (error) {
+    console.error('学生选课失败:', error)
+    throw error
+  }
+}
+
+// 获取学生的选课列表API
+export const getStudentCourses = async (studentId: number) => {
+  try {
+    const token = localStorage.getItem('token')
+    const params: any = {}
+    if (token) {
+      params.token = token
+    }
+
+    console.log(`获取学生 ${studentId} 的选课列表`)
+    const response = await http.get(`/student-courses/student/${studentId}`, { params })
+    console.log('获取学生选课列表成功:', response)
+    return response
+  } catch (error) {
+    console.error('获取学生选课列表失败:', error)
+    throw error
+  }
+}
+
+// 获取课程的学生列表API
+export const getCourseStudents = async (courseId: number) => {
+  try {
+    const token = localStorage.getItem('token')
+    const params: any = {}
+    if (token) {
+      params.token = token
+    }
+
+    console.log(`获取课程 ${courseId} 的学生列表`)
+    const response = await http.get(`/student-courses/course/${courseId}`, { params })
+    console.log('获取课程学生列表成功:', response)
+    return response
+  } catch (error) {
+    console.error('获取课程学生列表失败:', error)
+    throw error
+  }
+}
+
+// 获取课程的选课人数API
+export const getCourseEnrollmentCount = async (courseId: number) => {
+  try {
+    const token = localStorage.getItem('token')
+    const params: any = {}
+    if (token) {
+      params.token = token
+    }
+
+    console.log(`获取课程 ${courseId} 的选课人数`)
+    const response = await http.get(`/student-courses/course/${courseId}/count`, { params })
+    console.log('获取课程选课人数成功:', response)
+    return response
+  } catch (error) {
+    console.error('获取课程选课人数失败:', error)
+    throw error
+  }
+}
+
+// 获取同一教师下相似课程的学生列表API
+export const getSimilarCourseStudents = async (teacherId: number, courseId: number) => {
+  try {
+    const token = localStorage.getItem('token')
+    const params: any = {}
+    if (token) {
+      params.token = token
+    }
+
+    console.log(`获取教师 ${teacherId} 下相似课程 ${courseId} 的学生列表`)
+    const response = await http.get(`/student-courses/teacher/${teacherId}/similar-courses/${courseId}`, { params })
+    console.log('获取相似课程学生列表成功:', response)
+    return response
+  } catch (error) {
+    console.error('获取相似课程学生列表失败:', error)
+    throw error
+  }
+}

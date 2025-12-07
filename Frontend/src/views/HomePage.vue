@@ -5,6 +5,8 @@ import { useApiCount } from '../composables/useApiData'
 import { useNavigation } from '../composables/useNavigation'
 import { logout } from '../api'
 import { clearAuth } from '../utils/auth'
+import GenericStatsCard from '../components/GenericStatsCard.vue'
+import GenericFeatureCard from '../components/GenericFeatureCard.vue'
 import type { CountResponse } from '../types'
 
 // 使用组合式函数
@@ -70,6 +72,22 @@ const goToCoursesList = () => {
   goToCourses()
 }
 
+// 获取角色显示名称
+const getRoleDisplayName = (role: string | undefined | null) => {
+  switch (role) {
+    case 'admin':
+      return '管理员'
+    case 'teacher':
+      return '教师'
+    case 'student':
+      return '学生'
+    case 'reviewer':
+      return '审核员'
+    default:
+      return '用户'
+  }
+}
+
 // 组件挂载时自动获取数据
 onMounted(() => {
   getStudentCount()
@@ -80,110 +98,60 @@ onMounted(() => {
 })
 </script>
 <template>
-  <div class="container">
-    <!-- 用户信息和退出按钮 -->
-    <div class="header">
-      <h1 class="page-title-home">🎓 LMS 管理系统</h1>
-      <div class="user-info">
-        <span class="welcome-text">欢迎，{{ userInfo?.name || '用户' }}</span>
-        <span class="role-badge">{{ userInfo?.role === 'admin' ? '管理员' : userInfo?.role === 'teacher' ? '教师' : userInfo?.role === 'student' ? '学生' : '审核员' }}</span>
-        <button @click="handleLogout" class="logout-button">退出登录</button>
+  <div class="dashboard-page">
+    <!-- 头部导航 -->
+    <header class="dashboard-header">
+      <div class="container">
+        <div class="header-content">
+          <div class="header-brand">
+
+            <div class="brand-text">
+              <h1 class="brand-title">请假管理系统</h1>
+              <p class="brand-subtitle">Leave Management System</p>
+            </div>
+          </div>
+
+          <div class="header-actions">
+            <div class="user-profile">
+              <div class="user-info">
+                <span class="user-name">{{ userInfo?.name || '用户' }}</span>
+                <span class="user-role">{{ getRoleDisplayName(userInfo?.role) }}</span>
+              </div>
+            </div>
+
+            <button @click="handleLogout" class="btn btn-ghost btn-sm logout-btn">
+
+              退出登录
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
+    </header>
 
-    <div v-if="error" class="error">
-      <span>❌ {{ error }}</span>
-    </div>
+    <!-- 主要内容 -->
+    <main class="dashboard-main">
+      <div class="container">
+        <!-- 错误提示 -->
+        <div v-if="error" class="alert alert-danger">
+          {{ error }}
+        </div>
 
-    <div v-else class="button-grid">
-      <button @click="goToStudentsList" class="dashboard-button btn-primary">
-        <div class="button-icon">👨‍🎓</div>
-        <div class="button-title">学生管理</div>
-        <div class="button-count">{{ studentResponse?.students_count || 0 }}</div>
-        <div class="button-description">查看所有学生信息</div>
-      </button>
-
-      <button @click="goToLeavesList" class="dashboard-button btn-secondary">
-        <div class="button-icon">📄</div>
-        <div class="button-title">请假条管理</div>
-        <div class="button-count">{{ leaveResponse?.leaves_count || 0 }}</div>
-        <div class="button-description">管理请假申请</div>
-      </button>
-
-      <button @click="goToReviewersList" class="dashboard-button btn-success">
-        <div class="button-icon">👥</div>
-        <div class="button-title">审核员管理</div>
-        <div class="button-count">{{ reviewerResponse?.reviewers_count || 0 }}</div>
-        <div class="button-description">管理审核人员</div>
-      </button>
-
-      <button @click="goToTeachersList" class="dashboard-button btn-success">
-        <div class="button-icon">👨‍🏫</div>
-        <div class="button-title">教师管理</div>
-        <div class="button-count">{{ teacherResponse?.teachers_count || 0 }}</div>
-        <div class="button-description">管理教师信息</div>
-      </button>
-
-      <button @click="goToCoursesList" class="dashboard-button btn-success">
-        <div class="button-icon">📚</div>
-        <div class="button-title">课程管理</div>
-        <div class="button-count">{{ courseResponse?.courses_count || 0 }}</div>
-        <div class="button-description">管理课程信息</div>
-      </button>
-    </div>
+        <!-- 功能网格 -->
+        <section class="features-section">
+          <div class="features-grid">
+            <GenericFeatureCard title="学生管理" :count="studentResponse?.students_count || 0" description="查看和管理所有学生信息"
+              icon="" :onClick="goToStudentsList" />
+            <GenericFeatureCard title="请假条管理" :count="leaveResponse?.leaves_count || 0" description="处理和审核请假申请" icon=""
+              :onClick="goToLeavesList" />
+            <GenericFeatureCard title="审核员管理" :count="reviewerResponse?.reviewers_count || 0" description="管理审核员权限和设置"
+              icon="" :onClick="goToReviewersList" />
+            <GenericFeatureCard title="教师管理" :count="teacherResponse?.teachers_count || 0" description="维护教师信息档案"
+              icon="" :onClick="goToTeachersList" />
+            <GenericFeatureCard title="课程管理" :count="courseResponse?.courses_count || 0" description="设置和管理课程信息" icon=""
+              :onClick="goToCoursesList" />
+          </div>
+        </section>
+      </div>
+    </main>
   </div>
 </template>
-
-<style scoped>
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  padding: 1rem;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.welcome-text {
-  font-size: 1.1rem;
-  color: #333;
-  font-weight: 500;
-}
-
-.role-badge {
-  background-color: #007bff;
-  color: white;
-  padding: 0.25rem 0.75rem;
-  border-radius: 16px;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.logout-button {
-  background-color: #dc3545;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: background-color 0.2s;
-}
-
-.logout-button:hover {
-  background-color: #c82333;
-}
-
-.page-title-home {
-  margin: 0;
-  color: #333;
-}
-</style>

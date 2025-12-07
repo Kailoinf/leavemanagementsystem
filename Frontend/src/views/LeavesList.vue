@@ -3,9 +3,9 @@ import { ref, reactive, onMounted } from 'vue'
 import { usePagedData } from '../composables/usePagedData'
 import { useNavigation } from '../composables/useNavigation'
 import { formatDate, getStatusBadgeClass } from '../utils/formatters'
-import { createLeave, getAllCourses } from '../api'
+import { createLeave, getAllCourses, getStudentCourses } from '../api'
 import PaginationControls from '../components/PaginationControls.vue'
-import type { Leave, LeaveCreate, Course } from '../types'
+import type { Leave, LeaveCreate, Course, StudentCourseResponse } from '../types'
 
 // 使用分页组合式函数
 const {
@@ -50,9 +50,27 @@ const leaveForm = reactive<LeaveCreate>({
 const fetchCourses = async () => {
   try {
     coursesLoading.value = true
-    const response = await getAllCourses() as unknown as { items: Course[] }
-    courses.value = response.items || []
-    console.log('课程数据:', courses.value)
+
+    if (currentUserRole === 'student') {
+      // 学生角色：只获取已选的课程
+      const studentCoursesResponse = await getStudentCourses(currentUserId) as unknown as StudentCourseResponse[]
+
+      // 将StudentCourseResponse转换为Course格式
+      courses.value = studentCoursesResponse.map((sc: StudentCourseResponse) => ({
+        course_id: sc.course_id,
+        course_name: sc.course_name || `课程 ${sc.course_id}`,
+        class_hours: 0, // 从StudentCourseResponse中无法直接获取class_hours
+        teacher_id: 0, // 从StudentCourseResponse中无法直接获取teacher_id
+        teacher_name: sc.teacher_name || '未知教师'
+      }))
+
+      console.log('学生已选课程:', courses.value)
+    } else {
+      // 其他角色：获取所有课程
+      const response = await getAllCourses() as unknown as { items: Course[] }
+      courses.value = response.items || []
+      console.log('所有课程:', courses.value)
+    }
   } catch (error) {
     console.error('获取课程失败:', error)
     courses.value = []
@@ -99,6 +117,8 @@ const handleCourseChange = () => {
     const selectedCourse = courses.value.find(c => c.course_id === leaveForm.course_id)
     if (selectedCourse) {
       console.log('选择课程:', selectedCourse)
+      // 设置教师ID
+      leaveForm.teacher_id = selectedCourse.teacher_id
     }
   }
 }
@@ -190,25 +210,25 @@ onMounted(() => {
       <h1 class="page-title">请假条列表</h1>
       <div class="header-buttons">
         <button @click="openCreateModal" class="btn btn-primary">
-          ➕ 创建请假条
+          创建请假条
         </button>
-        <button @click="goToHome" class="btn btn-back">← 返回首页</button>
+        <button @click="goToHome" class="btn btn-back">返回首页</button>
       </div>
     </div>
 
     <div v-if="loading" class="loading">
-      <span>🔄 正在加载数据...</span>
+      <span>正在加载数据...</span>
     </div>
     <div v-else-if="error" class="error">
-      <span>❌ {{ error }}</span>
+      <span>{{ error }}</span>
     </div>
     <div v-else>
       <div class="stats-card">
-        <p class="stats-text">📄 共 {{ total }} 张请假条 (第 {{ currentPage }} / {{ totalPages }} 页)</p>
+        <p class="stats-text">共 {{ total }} 张请假条 (第 {{ currentPage }} / {{ totalPages }} 页)</p>
       </div>
 
       <div v-if="leaves.length === 0" class="empty-state">
-        <p>📋 暂无请假条数据</p>
+        <p>暂无请假条数据</p>
         <p>请等待数据添加完成后再来查看</p>
       </div>
 
@@ -251,15 +271,8 @@ onMounted(() => {
         </div>
 
         <!-- 分页控件 -->
-        <PaginationControls
-          :current-page="currentPage"
-          :total-pages="totalPages"
-          :total="total"
-          :page-size="pageSize"
-          :loading="loading"
-          @page-change="goToPage"
-          @page-size-change="setPageSize"
-        />
+        <PaginationControls :current-page="currentPage" :total-pages="totalPages" :total="total" :page-size="pageSize"
+          :loading="loading" @page-change="goToPage" @page-size-change="setPageSize" />
       </div>
     </div>
 
@@ -275,43 +288,23 @@ onMounted(() => {
           <div class="form-row-three">
             <div class="form-group">
               <label for="student_id">
-                学生ID *
-                <span v-if="currentUserRole === 'student'" class="info-text">(当前登录用户)</span>
+                学生ID
               </label>
-              <input
-                type="number"
-                id="student_id"
-                v-model="leaveForm.student_id"
-                :readonly="currentUserRole === 'student'"
-                :disabled="currentUserRole === 'student'"
-                :class="{ 'readonly-input': currentUserRole === 'student' }"
-                required
-                :placeholder="currentUserRole === 'student' ? `当前用户ID: ${currentUserId}` : '请输入学生ID'"
-                min="1"
-              />
-              <small v-if="currentUserRole === 'student'" class="help-text">
-                作为学生，只能为自己创建请假条
-              </small>
+              <input type="number" id="student_id" v-model="leaveForm.student_id"
+                :readonly="currentUserRole === 'student'" :disabled="currentUserRole === 'student'"
+                :class="{ 'readonly-input': currentUserRole === 'student' }" required
+                :placeholder="currentUserRole === 'student' ? `当前用户ID: ${currentUserId}` : '请输入学生ID'" min="1" />
             </div>
             <div class="form-group">
               <label for="leave_date">请假日期 *</label>
-              <input
-                type="date"
-                id="leave_date"
-                v-model="leaveForm.leave_date"
-                required
-              />
+              <input type="date" id="leave_date" v-model="leaveForm.leave_date" required />
             </div>
             <div class="form-group">
               <label for="course">课程</label>
               <select id="course" v-model="leaveForm.course_id" @change="handleCourseChange">
                 <option value="0">请选择课程</option>
                 <option v-if="coursesLoading" value="">加载中...</option>
-                <option
-                  v-for="course in courses"
-                  :key="course.course_id"
-                  :value="course.course_id"
-                >
+                <option v-for="course in courses" :key="course.course_id" :value="course.course_id">
                   {{ course.course_name }} ({{ course.teacher_name }})
                 </option>
               </select>
@@ -321,13 +314,7 @@ onMounted(() => {
           <div class="form-row">
             <div class="form-group">
               <label for="leave_days">请假天数 *</label>
-              <input
-                type="text"
-                id="leave_days"
-                v-model="leaveForm.leave_days"
-                required
-                placeholder="如：1天、2小时等"
-              />
+              <input type="text" id="leave_days" v-model="leaveForm.leave_days" required placeholder="如：1天、2小时等" />
             </div>
             <div class="form-group">
               <label for="leave_type">请假类型</label>
@@ -343,24 +330,14 @@ onMounted(() => {
 
           <div class="form-group">
             <label for="remarks">备注</label>
-            <textarea
-              id="remarks"
-              v-model="leaveForm.remarks"
-              rows="3"
-              placeholder="请输入请假事由等备注信息"
-              maxlength="100"
-            ></textarea>
+            <textarea id="remarks" v-model="leaveForm.remarks" rows="3" placeholder="请输入请假事由等备注信息"
+              maxlength="100"></textarea>
           </div>
 
           <div class="form-group">
             <label for="materials">材料说明</label>
-            <input
-              type="text"
-              id="materials"
-              v-model="leaveForm.materials"
-              placeholder="如：医院证明、家长签字等"
-              maxlength="100"
-            />
+            <input type="text" id="materials" v-model="leaveForm.materials" placeholder="如：医院证明、家长签字等"
+              maxlength="100" />
           </div>
 
           <!-- 错误信息 -->
@@ -382,217 +359,4 @@ onMounted(() => {
   </div>
 </template>
 
-<style scoped>
-/* 页面头部样式 */
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
 
-.header-buttons {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
-
-/* 弹窗样式 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 12px;
-  max-width: 600px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid #e1e5e9;
-}
-
-.modal-header h3 {
-  margin: 0;
-  color: #333;
-  font-size: 1.5rem;
-}
-
-.close-button {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: #666;
-  padding: 0.25rem;
-  width: 2rem;
-  height: 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.close-button:hover {
-  background-color: #f1f3f4;
-  color: #333;
-}
-
-.modal-form {
-  padding: 1.5rem;
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-/* 三列布局，用于学生ID、请假日期、课程的组合 */
-.form-row-three {
-  display: grid;
-  grid-template-columns: 1fr 2fr 2fr;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.form-group {
-  margin-bottom: 1rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 600;
-  color: #333;
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 2px solid #e1e5e9;
-  border-radius: 8px;
-  font-size: 1rem;
-  transition: border-color 0.3s;
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.form-group textarea {
-  resize: vertical;
-  min-height: 80px;
-}
-
-.readonly-input {
-  background-color: #f8f9fa;
-  cursor: not-allowed;
-  opacity: 0.8;
-}
-
-.info-text {
-  color: #666;
-  font-size: 0.85rem;
-  font-weight: normal;
-  margin-left: 0.5rem;
-}
-
-.help-text {
-  color: #667eea;
-  font-size: 0.8rem;
-  margin-top: 0.25rem;
-  display: block;
-}
-
-.error-message {
-  background-color: #fee;
-  color: #c33;
-  border: 1px solid #fcc;
-  padding: 1rem;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-  text-align: center;
-  font-weight: 500;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 2rem;
-  padding-top: 1rem;
-  border-top: 1px solid #e1e5e9;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .page-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 1rem;
-  }
-
-  .header-buttons {
-    justify-content: center;
-  }
-
-  .form-row {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-
-  .form-row-three {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-
-  .modal-content {
-    margin: 1rem;
-    max-height: calc(100vh - 2rem);
-  }
-
-  .modal-footer {
-    flex-direction: column-reverse;
-  }
-
-  .modal-footer button {
-    width: 100%;
-  }
-}
-
-@media (max-width: 1024px) {
-  .form-row-three {
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-  }
-}
-</style>

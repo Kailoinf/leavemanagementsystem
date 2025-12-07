@@ -88,90 +88,53 @@ const handlePageSizeChange = () => {
 
 <template>
   <div class="pagination-container">
+    <div class="pagination-info">
+      <span>显示第 {{ (currentPage - 1) * pageSize + 1 }} 到 
+        {{ Math.min(currentPage * pageSize, total) }} 条，
+        共 {{ total }} 条数据，
+        每页
+        <input 
+          type="number" 
+          v-model="pageSizeInput"
+          @change="handlePageSizeChange"
+          class="page-size-input"
+          min="1"
+          max="50"
+        /> 条
+      </span>
+    </div>
+    
     <div class="pagination-controls">
-      <button
-        @click="handleGoToFirstPage"
-        :disabled="!hasPrevPage || loading"
-        class="btn btn-pagination"
-        title="第一页"
-      >
-        «
+      <button @click="handleGoToFirstPage" :disabled="!hasPrevPage" class="btn">
+        首页
       </button>
-      <button
-        @click="handleGoToPrevPage"
-        :disabled="!hasPrevPage || loading"
-        class="btn btn-pagination"
-        title="上一页"
-      >
-        ‹
+      <button @click="handleGoToPrevPage" :disabled="!hasPrevPage" class="btn">
+        上页
       </button>
-
-      <!-- 页码跳转输入框 -->
-      <div class="pagination-input-group">
-        <span class="pagination-label">跳转到</span>
-        <input
+      
+      <span class="page-info">
+        {{ currentPage }} / {{ totalPages }}
+      </span>
+      
+      <button @click="handleGoToNextPage" :disabled="!hasNextPage" class="btn">
+        下页
+      </button>
+      <button @click="handleGoToLastPage" :disabled="!hasNextPage" class="btn">
+        末页
+      </button>
+      
+      <div class="go-to-page">
+        跳至
+        <input 
+          type="number" 
           v-model="goToPageInput"
-          @keyup.enter="handleGoToPage"
           @blur="handleGoToPage"
-          type="number"
+          class="page-input"
           :min="1"
           :max="totalPages"
-          class="pagination-input"
-          placeholder="页码"
-          :disabled="loading"
         />
-        <span class="pagination-label">页</span>
-        <!-- <button
-          @click="handleGoToPage"
-          class="btn btn-pagination"
-          title="跳转"
-          :disabled="loading"
-        >
-          →
-        </button> -->
+        页
       </div>
-
-      <span class="pagination-info">
-        第 {{ currentPage }} / {{ totalPages }} 页
-      </span>
-
-      <!-- 页面大小设置 -->
-      <div class="pagination-input-group">
-        <span class="pagination-label">每页</span>
-        <input
-          v-model="pageSizeInput"
-          @keyup.enter="handlePageSizeChange"
-          @blur="handlePageSizeChange"
-          type="number"
-          :min="1"
-          :max="50"
-          class="pagination-input"
-          placeholder="条数"
-          :disabled="loading"
-        />
-        <span class="pagination-label">条</span>
-      </div>
-
-      <span class="pagination-info">
-        共 {{ total }} 条记录
-      </span>
-
-      <button
-        @click="handleGoToNextPage"
-        :disabled="!hasNextPage || loading"
-        class="btn btn-pagination"
-        title="下一页"
-      >
-        ›
-      </button>
-      <button
-        @click="handleGoToLastPage"
-        :disabled="!hasNextPage || loading"
-        class="btn btn-pagination"
-        title="最后一页"
-      >
-        »
-      </button>
     </div>
   </div>
 </template>
