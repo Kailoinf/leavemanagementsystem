@@ -3,10 +3,16 @@
     <div class="login-card">
       <!-- 切换按钮 -->
       <div class="login-tabs">
-        <button @click="loginMode = 'password'" :class="['tab-button', { active: loginMode === 'password' }]">
+        <button
+          @click="loginMode = 'password'"
+          :class="['tab-button', { active: loginMode === 'password' }]"
+        >
           账号密码登录
         </button>
-        <button @click="generateQRCode" :class="['tab-button', { active: loginMode === 'qrcode' }]">
+        <button
+          @click="generateQRCode"
+          :class="['tab-button', { active: loginMode === 'qrcode' }]"
+        >
           扫码登录
         </button>
       </div>
@@ -17,7 +23,11 @@
         <form @submit.prevent="handleLogin" class="login-form">
           <div class="form-group">
             <label for="role">角色</label>
-            <select id="role" v-model="loginForm.role" required>
+            <select
+              id="role"
+              v-model="loginForm.role"
+              required
+            >
               <option value="" disabled>请选择角色</option>
               <option value="reviewer">审核员</option>
               <option value="teacher">教师</option>
@@ -26,12 +36,24 @@
           </div>
           <div class="form-group">
             <label for="id">账号</label>
-            <input type="text" id="id" v-model="loginForm.id" required placeholder="请输入用户ID" />
+            <input
+              type="text"
+              id="id"
+              v-model="loginForm.id"
+              required
+              placeholder="请输入用户ID"
+            />
           </div>
 
           <div class="form-group">
             <label for="password">密码</label>
-            <input type="password" id="password" v-model="loginForm.password" required placeholder="请输入密码" />
+            <input
+              type="password"
+              id="password"
+              v-model="loginForm.password"
+              required
+              placeholder="请输入密码"
+            />
           </div>
 
           <button type="submit" class="login-button" :disabled="isLoading">
@@ -64,7 +86,11 @@
           <small>Token: {{ qrToken }}</small>
         </div>
 
-        <button @click="handleQRCodeCheck" class="qr-check-button" :disabled="qrChecking">
+        <button
+          @click="handleQRCodeCheck"
+          class="qr-check-button"
+          :disabled="qrChecking"
+        >
           {{ qrChecking ? '验证中...' : '我已扫码' }}
         </button>
 
@@ -286,16 +312,14 @@ label {
   color: #555;
 }
 
-select,
-input {
+select, input {
   padding: 0.75rem;
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 1rem;
 }
 
-select:focus,
-input:focus {
+select:focus, input:focus {
   outline: none;
   border-color: #007bff;
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
@@ -341,8 +365,7 @@ input:focus {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.qr-loading,
-.qr-error {
+.qr-loading, .qr-error {
   padding: 2rem;
   color: #666;
   font-size: 1rem;

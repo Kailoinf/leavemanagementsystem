@@ -1,3 +1,16 @@
+/* 全局样式重置 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
 /* 通用样式 - 抽取自各组件的重复样式 */
 
 /* 容器样式 */

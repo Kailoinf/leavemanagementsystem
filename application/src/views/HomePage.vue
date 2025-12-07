@@ -1,19 +1,53 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useApiCount } from '../composables/useApiData'
 import { useNavigation } from '../composables/useNavigation'
+import { logout } from '../api'
+import { clearAuth } from '../utils/auth'
+import type { CountResponse } from '../types'
 
 // 使用组合式函数
-const { data: studentResponse, fetchCount: getStudentCount } = useApiCount<Record<string, number>>('/students/count')
-const { data: leaveResponse, fetchCount: getLeavesCount } = useApiCount<Record<string, number>>('/leaves/count')
-const { data: reviewerResponse, fetchCount: getReviewerCount } = useApiCount<Record<string, number>>('/reviewers/count')
-const { data: teacherResponse, fetchCount: getTeacherCount } = useApiCount<Record<string, number>>('/teachers/count')
-const { data: courseResponse, fetchCount: getCourseCount } = useApiCount<Record<string, number>>('/courses/count')
+const { data: studentResponse, fetchCount: getStudentCount, error: studentError } = useApiCount<Record<string, number>>('/students/count')
+const { data: leaveResponse, fetchCount: getLeavesCount, error: leaveError } = useApiCount<Record<string, number>>('/leaves/count')
+const { data: reviewerResponse, fetchCount: getReviewerCount, error: reviewerError } = useApiCount<Record<string, number>>('/reviewers/count')
+const { data: teacherResponse, fetchCount: getTeacherCount, error: teacherError } = useApiCount<Record<string, number>>('/teachers/count')
+const { data: courseResponse, fetchCount: getCourseCount, error: courseError } = useApiCount<Record<string, number>>('/courses/count')
 
+const router = useRouter()
 const { goToStudents, goToLeaves, goToReviewers, goToTeachers, goToCourses } = useNavigation()
+
+// 用户信息
+const userInfo = computed(() => {
+  const role = localStorage.getItem('role')
+  const id = localStorage.getItem('id')
+  const name = localStorage.getItem('name')
+
+  return role && id && name ? {
+    role: role,
+    id: parseInt(id),
+    name: name
+  } : null
+})
 
 // 合并错误状态
 const error = ref('')
+
+// 退出登录
+const handleLogout = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    if (token) {
+      await logout(token)
+    }
+  } catch (error) {
+    console.error('退出登录请求失败:', error)
+  } finally {
+    // 无论请求是否成功，都清除本地数据并跳转
+    clearAuth()
+    router.push('/login')
+  }
+}
 
 // 更新导航方法名称
 const goToStudentsList = () => {
@@ -47,7 +81,15 @@ onMounted(() => {
 </script>
 <template>
   <div class="container">
-    <h1 class="page-title-home">🎓 LMS 管理系统</h1>
+    <!-- 用户信息和退出按钮 -->
+    <div class="header">
+      <h1 class="page-title-home">🎓 LMS 管理系统</h1>
+      <div class="user-info">
+        <span class="welcome-text">欢迎，{{ userInfo?.name || '用户' }}</span>
+        <span class="role-badge">{{ userInfo?.role === 'teacher' ? '教师' : userInfo?.role === 'student' ? '学生' : '审核员' }}</span>
+        <button @click="handleLogout" class="logout-button">退出登录</button>
+      </div>
+    </div>
 
     <div v-if="error" class="error">
       <span>❌ {{ error }}</span>
@@ -91,3 +133,57 @@ onMounted(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.welcome-text {
+  font-size: 1.1rem;
+  color: #333;
+  font-weight: 500;
+}
+
+.role-badge {
+  background-color: #007bff;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.logout-button {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.logout-button:hover {
+  background-color: #c82333;
+}
+
+.page-title-home {
+  margin: 0;
+  color: #333;
+}
+</style>

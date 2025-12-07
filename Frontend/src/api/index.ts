@@ -3,7 +3,16 @@ import http from '../utils/http'
 // GET请求示例
 export const getData = async (url: string, params?: any) => {
   try {
-    const response = await http.get(url, { params })
+    // 自动添加token参数
+    const token = localStorage.getItem('token')
+    const requestParams = { ...params }
+    if (token) {
+      requestParams.token = token
+    }
+
+    console.log(`GET请求 ${url}，参数:`, requestParams)
+    const response = await http.get(url, { params: requestParams })
+    console.log(`GET请求成功 ${url}，响应:`, response)
     return response
   } catch (error) {
     console.error('GET请求失败:', error)
@@ -14,10 +23,16 @@ export const getData = async (url: string, params?: any) => {
 // 分页数据请求 - 仅使用GET方法
 export const getPagedData = async (url: string, page: number = 1, pageSize: number = 20, params?: any) => {
   try {
+    // 自动添加token参数
+    const token = localStorage.getItem('token')
     const requestData = {
       page,
       page_size: pageSize,
       ...params
+    }
+
+    if (token) {
+      requestData.token = token
     }
 
     // 直接使用GET方法

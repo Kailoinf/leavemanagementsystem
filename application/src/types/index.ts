@@ -71,3 +71,24 @@ export interface PaginatedResponse<T> {
   page_size: number
   total_pages: number
 }
+
+// 登录相关类型
+export interface LoginRequest {
+  role: string
+  id: string
+  password: string
+  token: string
+}
+
+export interface LoginResponse {
+  role: string
+  id: number
+  name: string
+  token: string
+}
+
+export interface CheckAuthResponse {
+  role: string
+  id: number
+  name: string
+}

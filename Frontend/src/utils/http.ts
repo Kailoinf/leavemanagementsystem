@@ -2,8 +2,8 @@ import axios from 'axios'
 
 // 创建axios实例
 const http = axios.create({
-  // baseURL: 'http://localhost:8000',
-  baseURL: 'https1://amazon.gxj62.cn',
+  baseURL: 'http://localhost:8000',
+  // baseURL: 'https://amazon.gxj62.cn',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

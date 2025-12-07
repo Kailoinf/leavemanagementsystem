@@ -50,6 +50,12 @@ def verify_password(plain: str, hashed: str) -> bool:
 # =======================
 # 📦 数据模型
 # =======================
+class Admin(SQLModel, table=True):
+    admin_id: int = Field(primary_key=True)
+    name: str = Field(max_length=8)
+    password: Optional[str] = Field(max_length=60, default=None)
+
+
 class Reviewer(SQLModel, table=True):
     reviewer_id: int = Field(primary_key=True)
     name: str = Field(max_length=8)
@@ -64,7 +70,7 @@ class Student(SQLModel, table=True):
     password: Optional[str] = Field(max_length=60, default=None)
     school: Optional[str] = Field(max_length=8, default=None)
     reviewer_id: Optional[int] = Field(foreign_key="reviewer.reviewer_id", default=None)
-    guarantee_permission: datetime  # 权限时间：仅影响「担保他人」能力
+    guarantee_permission: datetime
 
 
 class Teacher(SQLModel, table=True):
@@ -184,6 +190,12 @@ class LeaveCreate(BaseModel):
         return v
 
 
+class AdminCreate(BaseModel):
+    admin_id: int
+    name: str = Field(max_length=8)
+    password: Optional[str] = None
+
+
 # =======================
 # 🗄️ 数据库管理器
 # =======================
@@ -198,7 +210,7 @@ class DatabaseManager:
 
 
 db_manager = DatabaseManager()
-app = FastAPI(title="Leave Management System", version="2.1")
+app = FastAPI(title="Leave Management System")
 
 
 # =======================
@@ -296,6 +308,11 @@ def inject_relations(
     return item_dicts
 
 
+def get_admins_count(session: Session) -> int:
+    """获取管理员数量"""
+    return session.exec(select(func.count(Admin.admin_id))).one()
+
+
 # =======================
 # 🌐 依赖项
 # =======================
@@ -326,7 +343,9 @@ def logout(token: str, session: Session = Depends(db_manager.get_session)):
     login_records = session.exec(
         select(Login).where(Login.token == token).order_by(Login.login_id.desc())
     ).all()
-    login_record = next((record for record in login_records if record.can_be_used), None)
+    login_record = next(
+        (record for record in login_records if record.can_be_used), None
+    )
 
     if not login_record:
         raise HTTPException(status_code=401, detail="Invalid token")
@@ -344,17 +363,45 @@ def logout(token: str, session: Session = Depends(db_manager.get_session)):
 
 @app.get("/", summary="健康检查")
 async def root():
+    if get_admins_count(db_manager.get_session()) == 0:
+        return {"status": "unhealthy", "message": "No admin found"}
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
 
 # --- 学生 ---
 @app.get("/students", response_model=PaginatedResponse, summary="分页获取学生列表")
 def read_students(
+    token: str,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     session: Session = Depends(db_manager.get_session),
 ):
-    students, total, total_pages = paginate_query(session, Student, page, page_size)
+    obj = check_login(token, session)
+
+    # 只允许审核员和教师查看学生列表
+    if obj["role"] == "student":
+        raise HTTPException(status_code=403, detail="Permission denied")
+
+    # 构建查询条件
+    query = select(Student)
+
+    # 如果是审核员，只显示该审核员负责的学生
+    if obj["role"] == "reviewer":
+        query = query.where(Student.reviewer_id == obj["id"])
+
+    # 应用分页
+    offset = (page - 1) * page_size
+    students = session.exec(query.offset(offset).limit(page_size)).all()
+
+    # 计算总数
+    pk_col = list(Student.__table__.primary_key.columns)[0]
+    total_stmt = select(func.count(pk_col))
+    if obj["role"] == "reviewer":
+        total_stmt = total_stmt.where(Student.reviewer_id == obj["id"])
+    total = session.exec(total_stmt).one()
+
+    total_pages = (total + page_size - 1) // page_size
+
     items = inject_relations(
         session,
         students,
@@ -370,23 +417,45 @@ def read_students(
 
 
 @app.get("/students/count")
-def students_count(session: Session = Depends(db_manager.get_session)):
-    return {
-        "students_count": session.exec(select(func.count(Student.student_id))).one()
-    }
+def students_count(token: str, session: Session = Depends(db_manager.get_session)):
+    obj = check_login(token, session)
+    if obj["role"] == "admin":
+        count = session.exec(select(func.count(Student.student_id))).one()
+        return {"students_count": count}
+    elif obj["role"] in ["teacher", "student"]:
+        raise HTTPException(status_code=403, detail="Permission denied")
+    else:
+        # 修复：正确计算该审核员下的学生数量
+        count = session.exec(
+            select(func.count(Student.student_id)).where(
+                Student.reviewer_id == obj["id"]
+            )
+        ).one()
+        return {"students_count": count}
 
 
 @app.get("/students/{student_id}", response_model=Student)
-def read_student(student_id: int, session: Session = Depends(db_manager.get_session)):
+def read_student(
+    token: str, student_id: int, session: Session = Depends(db_manager.get_session)
+):
+    obj = check_login(token, session)
+    if obj["role"] == "student":
+        if obj["id"] != student_id:
+            raise HTTPException(status_code=403, detail="Permission denied")
+        else:
+            return get_by_id(session, Student, student_id, "student_id")
     return get_by_id(session, Student, student_id, "student_id")
 
 
 @app.post("/students", response_model=Student, summary="创建学生")
 def create_student_endpoint(
+    token: str,
     student_data: StudentCreate,
     session: Session = Depends(db_manager.get_session),
 ):
-    # 显式创建 datetime 对象，避免共享
+    obj = check_login(token, session)
+    if obj["role"] not in ["reviewer", "admin"]:
+        raise HTTPException(status_code=403, detail="Permission denied")
     student = Student(
         **student_data.model_dump(exclude={"guarantee_permission"}),
         guarantee_permission=student_data.guarantee_permission,
@@ -464,7 +533,9 @@ def read_courses(
     )
 
 
-@app.get("/courses/count")
+@app.get(
+    "/courses/count",
+)
 def courses_count(session: Session = Depends(db_manager.get_session)):
     return {"courses_count": session.exec(select(func.count(Course.course_id))).one()}
 
@@ -530,11 +601,34 @@ def create_reviewer_endpoint(
 # --- 请假记录 ---
 @app.get("/leaves", response_model=PaginatedResponse)
 def read_leaves(
+    token: str,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     session: Session = Depends(db_manager.get_session),
 ):
-    leaves, total, total_pages = paginate_query(session, Leave, page, page_size)
+    # 验证登录状态并获取用户信息
+    obj = check_login(token, session)
+
+    # 构建基础查询
+    query = select(Leave)
+
+    # 如果是审核员，只显示该审核员负责的请假条
+    if obj["role"] == "reviewer":
+        query = query.where(Leave.reviewer_id == obj["id"])
+
+    # 应用分页
+    offset = (page - 1) * page_size
+    leaves = session.exec(query.offset(offset).limit(page_size)).all()
+
+    # 计算总数
+    pk_col = list(Leave.__table__.primary_key.columns)[0]
+    total_stmt = select(func.count(pk_col))
+    if obj["role"] == "reviewer":
+        total_stmt = total_stmt.where(Leave.reviewer_id == obj["id"])
+    total = session.exec(total_stmt).one()
+
+    total_pages = (total + page_size - 1) // page_size
+
     items = inject_relations(
         session,
         leaves,
@@ -572,8 +666,18 @@ def read_leaves(
 
 
 @app.get("/leaves/count")
-def leaves_count(session: Session = Depends(db_manager.get_session)):
-    return {"leaves_count": session.exec(select(func.count(Leave.leave_id))).one()}
+def leaves_count(token: str, session: Session = Depends(db_manager.get_session)):
+    obj = check_login(token, session)
+    if obj["role"] == "admin":
+        count = session.exec(select(func.count(Leave.leave_id))).one()
+    elif obj["role"] in ["teacher", "student"]:
+        raise HTTPException(status_code=403, detail="Permission denied")
+    else:
+        count = session.exec(
+            select(func.count(Leave.leave_id)).where(Leave.reviewer_id == obj["id"])
+        ).one()
+
+    return {"leaves_count": count}
 
 
 @app.post("/leaves", response_model=Leave)
@@ -628,6 +732,7 @@ def login(user: UserLogin, session: Session = Depends(db_manager.get_session)):
         "teacher": (Teacher, "teacher_id"),
         "student": (Student, "student_id"),
         "reviewer": (Reviewer, "reviewer_id"),
+        "admin": (Admin, "admin_id"),
     }
     if user.role not in role_model_map:
         raise HTTPException(400, "Invalid role")
@@ -694,3 +799,19 @@ def login_qrcode(
             "name": obj["name"],
             "token": login_token,
         }
+
+
+@app.post("/create/admin")
+def create_admin(
+    admin_data: AdminCreate,
+    session: Session = Depends(db_manager.get_session),
+):
+    # 当管理员数为0时可用
+    if get_admins_count(session) == 0:
+        admin = Admin(**admin_data.model_dump())
+        session.add(admin)
+        session.commit()
+        session.refresh(admin)
+        return admin
+    else:
+        raise HTTPException(status_code=400, detail="Admin already exists")

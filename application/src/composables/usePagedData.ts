@@ -2,7 +2,7 @@
 
 import { ref, computed, type Ref } from 'vue'
 import { getPagedData } from '../api'
-import type { PaginatedResponse } from '../types'
+import type { DataState, PaginatedResponse } from '../types'
 
 /**
  * 分页数据获取组合式函数
