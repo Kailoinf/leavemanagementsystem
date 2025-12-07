@@ -23,6 +23,24 @@ export interface Leave {
   remarks: string
 }
 
+export interface LeaveCreate {
+  student_id: number
+  leave_date: string
+  class_hours?: string
+  leave_days: string
+  status: string
+  leave_type?: string
+  remarks?: string
+  materials?: string
+  reviewer_id?: number
+  teacher_id?: number
+  audit_remarks?: string
+  audit_time?: string | null
+  course_id?: number
+  is_modified?: string
+  guarantee_student_id?: number
+}
+
 export interface Reviewer {
   reviewer_id: string
   name: string

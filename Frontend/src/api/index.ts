@@ -118,3 +118,60 @@ export const createAdmin = async (adminData: {
     throw error
   }
 }
+
+// 获取所有课程API
+export const getAllCourses = async () => {
+  try {
+    // 自动添加token参数
+    const token = localStorage.getItem('token')
+    const requestParams: any = {}
+    if (token) {
+      requestParams.token = token
+    }
+
+    console.log('获取所有课程，参数:', requestParams)
+    const response = await http.get('/courses', { params: requestParams })
+    console.log('获取所有课程成功:', response)
+    return response
+  } catch (error) {
+    console.error('获取所有课程失败:', error)
+    throw error
+  }
+}
+
+// 创建请假条API
+export const createLeave = async (leaveData: any) => {
+  try {
+    // 获取token作为查询参数
+    const token = localStorage.getItem('token')
+
+    // 构建查询参数
+    const params: any = {}
+    if (token) {
+      params.token = token
+    }
+
+    console.log('创建请假条数据:', leaveData)
+    console.log('查询参数:', params)
+
+    // POST请求，token通过查询参数传递
+    const response = await http.post('/leaves', leaveData, { params })
+    console.log('创建请假条成功:', response)
+    return response
+  } catch (error: any) {
+    console.error('创建请假条失败:', error)
+    if (error.response?.data) {
+      console.error('错误详情:', error.response.data)
+      if (error.response.data.detail) {
+        console.error('验证错误详情:', error.response.data.detail)
+        // 如果是数组，逐个输出
+        if (Array.isArray(error.response.data.detail)) {
+          error.response.data.detail.forEach((item: any, index: number) => {
+            console.error(`验证错误 ${index + 1}:`, item)
+          })
+        }
+      }
+    }
+    throw error
+  }
+}

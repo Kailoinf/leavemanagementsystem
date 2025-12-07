@@ -1,7 +1,9 @@
 from sqlmodel import Session, select, func
 from fastapi import Depends, Query, HTTPException
+from datetime import datetime
 
 from app.models import Leave, Student, Reviewer, Teacher, Course
+from app.services.student_course import StudentCourseService
 from app.schemas import LeaveCreate
 from app.api.deps import check_login
 from app.services.common import CommonService
@@ -132,10 +134,46 @@ class LeaveService:
         session: Session,
     ):
         obj = check_login(token, session)
-        # 修正：检查角色是否为学生，而不是检查角色列表是否等于["student"]
+
+        # 创建一个数据字典的副本来修改
+        leave_dict = leave_data.model_dump()
+
+        # 根据用户角色自动设置student_id
         if obj["role"] == "student":
-            leave_data.student_id = obj["id"]
-        leave = Leave(**leave_data.model_dump())
+            leave_dict["student_id"] = obj["id"]
+        elif not leave_dict.get("student_id"):
+            # 如果不是学生且没有提供student_id，抛出错误
+            raise HTTPException(status_code=400, detail="student_id is required for non-student users")
+
+        # 自动设置reviewer_id：根据学生的reviewer_id设置
+        student = session.exec(
+            select(Student).where(Student.student_id == leave_dict["student_id"])
+        ).first()
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+
+        if student.reviewer_id:
+            leave_dict["reviewer_id"] = student.reviewer_id
+        else:
+            raise HTTPException(status_code=400, detail="Student has no assigned reviewer")
+
+        # 验证学生是否选择了该课程
+        if leave_dict.get("course_id"):
+            if not StudentCourseService.verify_student_enrollment(
+                leave_dict["student_id"],
+                leave_dict["course_id"],
+                session
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Student has not enrolled in this course"
+                )
+
+        # 如果没有提供leave_date，自动设置为当前时间
+        if not leave_dict.get("leave_date"):
+            leave_dict["leave_date"] = datetime.now()
+
+        leave = Leave(**leave_dict)
         session.add(leave)
         session.commit()
         session.refresh(leave)

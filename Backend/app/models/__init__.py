@@ -5,6 +5,7 @@ from app.models.teacher import Teacher
 from app.models.course import Course
 from app.models.leave import Leave
 from app.models.login import Login
+from app.models.student_course import StudentCourse
 
 __all__ = [
     "Admin",
@@ -13,5 +14,6 @@ __all__ = [
     "Teacher",
     "Course",
     "Leave",
-    "Login"
+    "Login",
+    "StudentCourse"
 ]

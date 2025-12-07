@@ -15,7 +15,7 @@ class Leave(SQLModel, table=True):
     reviewer_id: int = Field(foreign_key="reviewer.reviewer_id", default=None)
     teacher_id: int = Field(foreign_key="teacher.teacher_id", default=None)
     audit_remarks: str = Field(max_length=100, default=None)
-    audit_time: datetime = None
+    audit_time: datetime = Field(default=None)
     course_id: int = Field(foreign_key="course.course_id", default=None)
     is_modified: str = Field(max_length=12, default=None)
     guarantee_student_id: int = Field(
