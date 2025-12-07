@@ -86,7 +86,7 @@ onMounted(() => {
       <h1 class="page-title-home">🎓 LMS 管理系统</h1>
       <div class="user-info">
         <span class="welcome-text">欢迎，{{ userInfo?.name || '用户' }}</span>
-        <span class="role-badge">{{ userInfo?.role === 'teacher' ? '教师' : userInfo?.role === 'student' ? '学生' : '审核员' }}</span>
+        <span class="role-badge">{{ userInfo?.role === 'admin' ? '管理员' : userInfo?.role === 'teacher' ? '教师' : userInfo?.role === 'student' ? '学生' : '审核员' }}</span>
         <button @click="handleLogout" class="logout-button">退出登录</button>
       </div>
     </div>

@@ -92,3 +92,9 @@ export interface CheckAuthResponse {
   id: number
   name: string
 }
+
+export interface HealthCheckResponse {
+  status: 'healthy' | 'unhealthy'
+  message?: string
+  timestamp?: string
+}

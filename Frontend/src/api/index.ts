@@ -92,3 +92,29 @@ export const logout = async (token: string) => {
     throw error
   }
 }
+
+// 系统健康检查API
+export const checkSystemHealth = async () => {
+  try {
+    const response = await http.get('/')
+    return response
+  } catch (error) {
+    console.error('系统健康检查失败:', error)
+    throw error
+  }
+}
+
+// 创建管理员API
+export const createAdmin = async (adminData: {
+  admin_id: number
+  name: string
+  password: string
+}) => {
+  try {
+    const response = await http.post('/create/admin', adminData)
+    return response
+  } catch (error) {
+    console.error('创建管理员失败:', error)
+    throw error
+  }
+}
