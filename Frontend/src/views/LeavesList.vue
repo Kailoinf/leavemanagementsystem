@@ -205,74 +205,78 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="container">
-    <div class="page-header">
-      <h1 class="page-title">请假条列表</h1>
-      <div class="header-buttons">
-        <button @click="openCreateModal" class="btn btn-primary">
-          创建请假条
-        </button>
-        <button @click="goToHome" class="btn btn-back">返回首页</button>
-      </div>
-    </div>
-
-    <div v-if="loading" class="loading">
-      <span>正在加载数据...</span>
-    </div>
-    <div v-else-if="error" class="error">
-      <span>{{ error }}</span>
-    </div>
-    <div v-else>
-      <div class="stats-card">
-        <p class="stats-text">共 {{ total }} 张请假条 (第 {{ currentPage }} / {{ totalPages }} 页)</p>
+  <div class="leaves-page">
+    <div class="container">
+      <div class="page-header">
+        <h1 class="page-title">请假条列表</h1>
+        <div class="header-buttons">
+          <button @click="openCreateModal" class="btn btn-primary">
+            创建请假条
+          </button>
+          <button @click="goToHome" class="btn btn-back">返回首页</button>
+        </div>
       </div>
 
-      <div v-if="leaves.length === 0" class="empty-state">
-        <p>暂无请假条数据</p>
-        <p>请等待数据添加完成后再来查看</p>
+      <div v-if="loading" class="loading">
+        <div class="loading-spinner"></div>
+        <span>正在加载数据...</span>
       </div>
-
-      <div v-else>
-        <div class="table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>请假ID</th>
-                <th>学生ID</th>
-                <th>请假类型</th>
-                <th>请假天数</th>
-                <th>请假时间</th>
-                <th>状态</th>
-                <th>审核人ID</th>
-                <th>审核人姓名</th>
-                <th>审核意见</th>
-                <th>备注</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="leave in leaves" :key="leave.leave_id">
-                <td>{{ leave.leave_id }}</td>
-                <td>{{ leave.student_id }}</td>
-                <td>{{ leave.leave_type }}</td>
-                <td>{{ leave.leave_days }}</td>
-                <td>{{ formatDate(leave.leave_date) }}</td>
-                <td>
-                  <span :class="getStatusBadgeClass(leave.status)" class="badge">
-                    {{ leave.status }}
-                  </span>
-                </td>
-                <td>{{ leave.reviewer_id }}</td>
-                <td>{{ leave.reviewer_name }}</td>
-                <td>{{ leave.audit_remarks }}</td>
-                <td>{{ leave.remarks }}</td>
-              </tr>
-            </tbody>
-          </table>
+      <div v-else-if="error" class="error">
+        <span>{{ error }}</span>
+      </div>
+      <div v-else class="page-content">
+        <div class="stats-card">
+          <p class="stats-text">共 {{ total }} 张请假条 (第 {{ currentPage }} / {{ totalPages }} 页)</p>
         </div>
 
-        <!-- 分页控件 -->
-        <PaginationControls :current-page="currentPage" :total-pages="totalPages" :total="total" :page-size="pageSize"
-          :loading="loading" @page-change="goToPage" @page-size-change="setPageSize" />
+        <div v-if="leaves.length === 0" class="empty-state">
+          <div class="empty-icon">📝</div>
+          <h3>暂无请假条数据</h3>
+          <p>请等待数据添加完成后再来查看</p>
+        </div>
+
+        <div v-else class="data-section">
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>请假ID</th>
+                  <th>学生ID</th>
+                  <th>请假类型</th>
+                  <th>请假天数</th>
+                  <th>请假时间</th>
+                  <th>状态</th>
+                  <th>审核人ID</th>
+                  <th>审核人姓名</th>
+                  <th>审核意见</th>
+                  <th>备注</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="leave in leaves" :key="leave.leave_id" class="table-row">
+                  <td class="table-cell">{{ leave.leave_id }}</td>
+                  <td class="table-cell">{{ leave.student_id }}</td>
+                  <td class="table-cell">{{ leave.leave_type }}</td>
+                  <td class="table-cell">{{ leave.leave_days }}</td>
+                  <td class="table-cell">{{ formatDate(leave.leave_date) }}</td>
+                  <td class="table-cell">
+                    <span :class="getStatusBadgeClass(leave.status)" class="badge">
+                      {{ leave.status }}
+                    </span>
+                  </td>
+                  <td class="table-cell">{{ leave.reviewer_id }}</td>
+                  <td class="table-cell">{{ leave.reviewer_name }}</td>
+                  <td class="table-cell">{{ leave.audit_remarks }}</td>
+                  <td class="table-cell">{{ leave.remarks }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- 分页控件 -->
+          <PaginationControls :current-page="currentPage" :total-pages="totalPages" :total="total" :page-size="pageSize"
+            :loading="loading" @page-change="goToPage" @page-size-change="setPageSize" />
+        </div>
       </div>
     </div>
 
@@ -281,11 +285,10 @@ onMounted(() => {
       <div class="modal-content">
         <div class="modal-header">
           <h3>创建请假条</h3>
-          <button @click="closeCreateModal" class="close-button">&times;</button>
         </div>
 
         <form @submit.prevent="handleCreateLeave" class="modal-form">
-          <div class="form-row-three">
+          <div class="form-row-two">
             <div class="form-group">
               <label for="student_id">
                 学生ID
@@ -299,16 +302,17 @@ onMounted(() => {
               <label for="leave_date">请假日期 *</label>
               <input type="date" id="leave_date" v-model="leaveForm.leave_date" required />
             </div>
-            <div class="form-group">
-              <label for="course">课程</label>
-              <select id="course" v-model="leaveForm.course_id" @change="handleCourseChange">
-                <option value="0">请选择课程</option>
-                <option v-if="coursesLoading" value="">加载中...</option>
-                <option v-for="course in courses" :key="course.course_id" :value="course.course_id">
-                  {{ course.course_name }} ({{ course.teacher_name }})
-                </option>
-              </select>
-            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="course">课程</label>
+            <select id="course" v-model="leaveForm.course_id" @change="handleCourseChange">
+              <option value="0">请选择课程</option>
+              <option v-if="coursesLoading" value="">加载中...</option>
+              <option v-for="course in courses" :key="course.course_id" :value="course.course_id">
+                {{ course.course_name }} ({{ course.teacher_name }})
+              </option>
+            </select>
           </div>
 
           <div class="form-row">
@@ -334,12 +338,6 @@ onMounted(() => {
               maxlength="100"></textarea>
           </div>
 
-          <div class="form-group">
-            <label for="materials">材料说明</label>
-            <input type="text" id="materials" v-model="leaveForm.materials" placeholder="如：医院证明、家长签字等"
-              maxlength="100" />
-          </div>
-
           <!-- 错误信息 -->
           <div v-if="createError" class="error-message">
             {{ createError }}
@@ -359,4 +357,455 @@ onMounted(() => {
   </div>
 </template>
 
+<style scoped>
+.leaves-page {
+  min-height: 100vh;
+  background-color: var(--bg-secondary);
+  padding: var(--spacing-lg) 0;
+}
 
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xl);
+  padding-bottom: var(--spacing);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.page-title {
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.header-buttons {
+  display: flex;
+  gap: var(--spacing);
+}
+
+.btn-back {
+  background-color: var(--gray-100);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-medium);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  font-weight: 500;
+  transition: all var(--transition);
+}
+
+.btn-back:hover {
+  background-color: var(--gray-200);
+  color: var(--text-primary);
+  border-color: var(--border-dark);
+}
+
+.page-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.stats-card {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing);
+  box-shadow: var(--shadow);
+}
+
+.stats-text {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  margin: 0;
+  font-weight: 500;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2xl);
+  color: var(--text-secondary);
+  gap: var(--spacing);
+}
+
+.loading-spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid var(--border-light);
+  border-top: 2px solid var(--primary-600);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2xl);
+  color: var(--error);
+  background-color: var(--error-light);
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-lg);
+  font-weight: 500;
+}
+
+.empty-state {
+  text-align: center;
+  padding: var(--spacing-2xl);
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: var(--spacing);
+  opacity: 0.5;
+}
+
+.empty-state h3 {
+  font-size: var(--text-xl);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.empty-state p {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.data-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.table-container {
+  overflow-x: auto;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.data-table th {
+  background-color: var(--gray-50);
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border-medium);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.data-table td {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.table-row {
+  transition: background-color var(--transition-fast);
+}
+
+.table-row:hover {
+  background-color: var(--gray-50);
+}
+
+.table-row:last-child .table-cell {
+  border-bottom: none;
+}
+
+.table-cell {
+  position: relative;
+  vertical-align: middle;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  border-radius: var(--radius);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+/* 弹窗样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--spacing);
+}
+
+.modal-content {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  max-width: 600px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem var(--spacing-lg);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.modal-header h3 {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: var(--text-2xl);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 0;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  transition: all var(--transition);
+}
+
+.close-button:hover {
+  background-color: var(--gray-100);
+  color: var(--text-primary);
+}
+
+.modal-form {
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing);
+}
+
+.form-row-two {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing);
+}
+
+.form-row-two {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.form-group label {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 0.75rem;
+  font-size: var(--text-base);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: all var(--transition);
+  height: 2.75rem;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.form-group input[type="date"] {
+  height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.form-group select {
+  height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+}
+
+.form-group textarea {
+  height: auto;
+  min-height: 80px;
+  resize: vertical;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1);
+}
+
+.readonly-input {
+  background-color: var(--gray-100);
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.error-message {
+  background-color: var(--error-light);
+  color: var(--error);
+  padding: var(--spacing);
+  border-radius: var(--radius);
+  border: 1px solid #fca5a5;
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing);
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-light);
+}
+
+/* 响应式设计 */
+@media (max-width: 1024px) {
+  .modal-content {
+    max-width: 90%;
+  }
+}
+
+@media (max-width: 768px) {
+  .leaves-page {
+    padding: var(--spacing) 0;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing);
+    margin-bottom: var(--spacing-lg);
+  }
+
+  .header-buttons {
+    justify-content: center;
+  }
+
+  .form-row-three {
+    grid-template-columns: 1fr;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-content {
+    max-width: 100%;
+    margin: var(--spacing);
+  }
+
+  .modal-header {
+    padding: var(--spacing);
+  }
+
+  .modal-form {
+    padding: var(--spacing);
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 0.75rem 0.5rem;
+    font-size: var(--text-xs);
+  }
+}
+
+@media (max-width: 480px) {
+  .page-header {
+    padding-bottom: var(--spacing-sm);
+  }
+
+  .page-title {
+    font-size: var(--text-xl);
+    text-align: center;
+  }
+
+  .header-buttons {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+
+  .modal-overlay {
+    padding: var(--spacing-sm);
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 0.5rem 0.25rem;
+  }
+}
+</style>

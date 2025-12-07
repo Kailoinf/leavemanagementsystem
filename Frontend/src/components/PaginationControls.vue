@@ -138,3 +138,174 @@ const handlePageSizeChange = () => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.pagination-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing);
+  padding: var(--spacing);
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+
+.pagination-info {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.pagination-controls .btn {
+  padding: 0.375rem 0.75rem;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  border-radius: var(--radius);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  transition: all var(--transition);
+  cursor: pointer;
+}
+
+.pagination-controls .btn:hover:not(:disabled) {
+  background-color: var(--primary-50);
+  border-color: var(--primary-300);
+  color: var(--primary-700);
+}
+
+.pagination-controls .btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.pagination-controls .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: var(--gray-100);
+  color: var(--text-tertiary);
+}
+
+.page-info {
+  padding: 0.375rem 0.75rem;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--primary-600);
+  background-color: var(--primary-50);
+  border-radius: var(--radius);
+  border: 1px solid var(--primary-200);
+  min-width: 60px;
+  text-align: center;
+}
+
+.go-to-page {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.page-input,
+.page-size-input {
+  width: 3.5rem;
+  padding: 0.25rem 0.5rem;
+  font-size: var(--text-sm);
+  text-align: center;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: all var(--transition);
+}
+
+.page-input:focus,
+.page-size-input:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .pagination-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-sm);
+  }
+  
+  .pagination-controls {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+  }
+  
+  .pagination-controls .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: var(--text-xs);
+  }
+  
+  .page-info {
+    padding: 0.25rem 0.5rem;
+    font-size: var(--text-xs);
+    min-width: 50px;
+  }
+  
+  .go-to-page {
+    font-size: var(--text-xs);
+  }
+  
+  .page-input,
+  .page-size-input {
+    width: 3rem;
+    font-size: var(--text-xs);
+  }
+}
+
+@media (max-width: 480px) {
+  .pagination-container {
+    padding: var(--spacing-sm);
+  }
+  
+  .pagination-info {
+    font-size: var(--text-xs);
+    text-align: center;
+  }
+  
+  .pagination-controls {
+    gap: 0.25rem;
+  }
+  
+  .pagination-controls .btn {
+    padding: 0.25rem 0.375rem;
+    font-size: var(--text-xs);
+  }
+  
+  .page-info {
+    padding: 0.25rem 0.375rem;
+    font-size: var(--text-xs);
+    min-width: 45px;
+  }
+  
+  .go-to-page {
+    font-size: var(--text-xs);
+    gap: 0.125rem;
+  }
+  
+  .page-input,
+  .page-size-input {
+    width: 2.5rem;
+    padding: 0.125rem 0.25rem;
+  }
+}
+</style>

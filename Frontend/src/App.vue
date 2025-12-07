@@ -4,6 +4,16 @@
   </div>
 </template>
 
+<style scoped>
+#app {
+  min-height: 100vh;
+  background-color: var(--bg-secondary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+</style>
+
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
