@@ -93,6 +93,38 @@ export const logout = async (token: string) => {
   }
 }
 
+// 修改密码API（修改自己的密码）
+export const changePassword = async (data: {
+  old_password: string
+  new_password: string
+}, token: string) => {
+  try {
+    const response = await http.post('/change-password', data, {
+      params: { token }
+    })
+    return response
+  } catch (error) {
+    console.error('修改密码失败:', error)
+    throw error
+  }
+}
+
+// 修改指定用户密码API（仅管理员可用）
+export const changeUserPassword = async (userId: number, data: {
+  old_password: string
+  new_password: string
+}, token: string) => {
+  try {
+    const response = await http.post(`/change-password/${userId}`, data, {
+      params: { token }
+    })
+    return response
+  } catch (error) {
+    console.error('修改用户密码失败:', error)
+    throw error
+  }
+}
+
 // 系统健康检查API
 export const checkSystemHealth = async () => {
   try {
@@ -262,21 +294,70 @@ export const getCourseEnrollmentCount = async (courseId: number) => {
   }
 }
 
-// 获取同一教师下相似课程的学生列表API
-export const getSimilarCourseStudents = async (teacherId: number, courseId: number) => {
+// 编辑请假条API
+export const editLeave = async (leaveId: number, leaveData: any) => {
   try {
+    // 获取token作为查询参数
     const token = localStorage.getItem('token')
+
+    // 构建查询参数
     const params: any = {}
     if (token) {
       params.token = token
     }
 
-    console.log(`获取教师 ${teacherId} 下相似课程 ${courseId} 的学生列表`)
-    const response = await http.get(`/student-courses/teacher/${teacherId}/similar-courses/${courseId}`, { params })
-    console.log('获取相似课程学生列表成功:', response)
+    console.log(`编辑请假条 ${leaveId} 数据:`, leaveData)
+    console.log('查询参数:', params)
+
+    // POST请求，token通过查询参数传递
+    const response = await http.post(`/leaves/edit/${leaveId}`, leaveData, { params })
+    console.log('编辑请假条成功:', response)
     return response
-  } catch (error) {
-    console.error('获取相似课程学生列表失败:', error)
+  } catch (error: any) {
+    console.error('编辑请假条失败:', error)
+    if (error.response?.data) {
+      console.error('错误详情:', error.response.data)
+      if (error.response.data.detail) {
+        console.error('验证错误详情:', error.response.data.detail)
+        // 如果是数组，逐个输出
+        if (Array.isArray(error.response.data.detail)) {
+          error.response.data.detail.forEach((item: any, index: number) => {
+            console.error(`验证错误 ${index + 1}:`, item)
+          })
+        }
+      }
+    }
+    throw error
+  }
+}
+
+// 审核请假条API (实际上是编辑的一种特殊情况)
+export const auditLeave = async (leaveId: number, auditData: {
+  status: string
+  audit_remarks?: string
+}) => {
+  try {
+    // 获取token作为查询参数
+    const token = localStorage.getItem('token')
+
+    // 构建查询参数
+    const params: any = {}
+    if (token) {
+      params.token = token
+    }
+
+    console.log(`审核请假条 ${leaveId} 数据:`, auditData)
+    console.log('查询参数:', params)
+
+    // POST请求，token通过查询参数传递
+    const response = await http.post(`/leaves/edit/${leaveId}`, auditData, { params })
+    console.log('审核请假条成功:', response)
+    return response
+  } catch (error: any) {
+    console.error('审核请假条失败:', error)
+    if (error.response?.data) {
+      console.error('错误详情:', error.response.data)
+    }
     throw error
   }
 }

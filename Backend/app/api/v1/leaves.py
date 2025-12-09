@@ -43,33 +43,33 @@ def create_leave_endpoint(
 
 @router.get("/leaves/student/{student_id}", response_model=List[Leave])
 def read_leaves_by_student(
-    token: str,
-    student_id: int,
-    session: Session = Depends(get_session)
+    token: str, student_id: int, session: Session = Depends(get_session)
 ):
     return LeaveService.get_leaves_by_student(token, student_id, session)
 
 
 @router.get("/leaves/reviewer/{reviewer_id}", response_model=List[Leave])
 def read_leaves_by_reviewer(
-    token: str,
-    reviewer_id: int,
-    session: Session = Depends(get_session)
+    token: str, reviewer_id: int, session: Session = Depends(get_session)
 ):
     return LeaveService.get_leaves_by_reviewer(token, reviewer_id, session)
 
 
 @router.get("/leaves/course/{course_id}", response_model=List[Leave])
-def read_leaves_by_course(
-    course_id: int,
-    session: Session = Depends(get_session)
-):
+def read_leaves_by_course(course_id: int, session: Session = Depends(get_session)):
     return LeaveService.get_leaves_by_course(course_id, session)
 
 
 @router.get("/leaves/teacher/{teacher_id}", response_model=List[Leave])
-def read_leaves_by_teacher(
-    teacher_id: int,
-    session: Session = Depends(get_session)
-):
+def read_leaves_by_teacher(teacher_id: int, session: Session = Depends(get_session)):
     return LeaveService.get_leaves_by_teacher(teacher_id, session)
+
+
+@router.post("/leaves/edit/{leave_id}", response_model=Leave)
+def edit_leave_by_id(
+    leave_id: int,
+    token: str,
+    leave_data: LeaveCreate,
+    session: Session = Depends(get_session),
+):
+    return LeaveService.edit_leave(token, leave_id, leave_data, session)

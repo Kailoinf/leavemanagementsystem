@@ -71,13 +71,13 @@ class LeaveService:
             session,
             leaves,
             {
-                "student_id": (Student, "student_id", "name", "student_name"),
-                "reviewer_id": (Reviewer, "reviewer_id", "name", "reviewer_name"),
-                "teacher_id": (Teacher, "teacher_id", "name", "teacher_name"),
+                "student_id": (Student, "student_id", "student_name", "student_name"),
+                "reviewer_id": (Reviewer, "reviewer_id", "reviewer_name", "reviewer_name"),
+                "teacher_id": (Teacher, "teacher_id", "teacher_name", "teacher_name"),
                 "guarantee_student_id": (
                     Student,
                     "student_id",
-                    "name",
+                    "student_name",
                     "guarantee_student_name",
                 ),
             },
@@ -205,8 +205,40 @@ class LeaveService:
                     raise HTTPException(status_code=403, detail="Permission denied")
             else:
                 raise HTTPException(status_code=403, detail="Permission denied")
-        """根据学生ID获取请假记录"""
-        return session.exec(select(Leave).where(Leave.student_id == student_id)).all()
+
+        """根据学生ID获取请假记录（包含关联数据）"""
+        leaves = session.exec(select(Leave).where(Leave.student_id == student_id)).all()
+
+        # 注入关联数据
+        items = CommonService.inject_relations(
+            session,
+            leaves,
+            {
+                "student_id": (Student, "student_id", "student_name", "student_name"),
+                "reviewer_id": (Reviewer, "reviewer_id", "reviewer_name", "reviewer_name"),
+                "teacher_id": (Teacher, "teacher_id", "teacher_name", "teacher_name"),
+                "guarantee_student_id": (
+                    Student,
+                    "student_id",
+                    "student_name",
+                    "guarantee_student_name",
+                ),
+            },
+        )
+        # 补充 course_name
+        course_ids = {item["course_id"] for item in items if item.get("course_id")}
+        if course_ids:
+            courses = session.exec(
+                select(Course).where(Course.course_id.in_(course_ids))
+            ).all()
+            course_map = {c.course_id: c.course_name for c in courses}
+            for item in items:
+                item["course_name"] = course_map.get(item.get("course_id"))
+        else:
+            for item in items:
+                item["course_name"] = None
+
+        return items
 
     @staticmethod
     def get_leaves_by_reviewer(token: str, reviewer_id: int, session: Session):
@@ -238,3 +270,75 @@ class LeaveService:
         if not course_ids:
             return []
         return session.exec(select(Leave).where(Leave.course_id.in_(course_ids))).all()
+
+    @staticmethod
+    def edit_leave(
+        token: str,
+        leave_id: int,
+        leave_data: LeaveCreate,
+        session: Session,
+    ):
+        """编辑请假记录"""
+        # 验证登录状态并获取用户信息
+        obj = check_login(token, session)
+
+        # 获取要编辑的请假记录
+        leave = session.exec(
+            select(Leave).where(Leave.leave_id == leave_id)
+        ).first()
+
+        if not leave:
+            raise HTTPException(status_code=404, detail="Leave record not found")
+
+        # 检查状态：已批准的记录无法修改
+        if leave.status == "已批准":
+            raise HTTPException(status_code=403, detail="Cannot edit approved leave request")
+
+        # 权限验证
+        if obj["role"] == "student":
+            # 学生只能修改自己的记录
+            if leave.student_id != obj["id"]:
+                raise HTTPException(status_code=403, detail="Students can only edit their own leave requests")
+        elif obj["role"] == "reviewer":
+            # 审核员只能修改自己名下学生的记录
+            if leave.reviewer_id != obj["id"]:
+                raise HTTPException(status_code=403, detail="Reviewers can only edit leave requests of their assigned students")
+        elif obj["role"] == "admin":
+            # 管理员可以修改所有记录
+            pass
+        else:
+            # 其他角色无权限修改
+            raise HTTPException(status_code=403, detail="Permission denied")
+
+        # 更新请假记录
+        update_data = leave_data.model_dump(exclude_unset=True)
+
+        # 不允许修改student_id，如果提供了不同的student_id，使用原来的ID
+        if "student_id" in update_data:
+            if update_data["student_id"] != leave.student_id:
+                # 强制使用原来的student_id
+                update_data["student_id"] = leave.student_id
+
+        # 如果提供了course_id，需要验证学生是否选择了该课程
+        if "course_id" in update_data and update_data["course_id"]:
+            # 使用当前记录的student_id进行验证
+            if not StudentCourseService.verify_student_enrollment(
+                leave.student_id,
+                update_data["course_id"],
+                session
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Student has not enrolled in this course"
+                )
+
+        # 标记为已修改
+        update_data["is_modified"] = "是"
+
+        # 应用更新
+        for key, value in update_data.items():
+            setattr(leave, key, value)
+
+        session.commit()
+        session.refresh(leave)
+        return leave

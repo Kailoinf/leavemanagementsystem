@@ -11,23 +11,29 @@ export interface Student {
 }
 
 export interface Leave {
-  leave_id: string
-  student_id: string
+  leave_id: number
+  student_id: number
+  student_name: string
   leave_type: string
-  leave_days: number
+  leave_hours: string  // 请假课时
   leave_date: string
   status: '已批准' | '待审批' | '已拒绝' | '已撤销'
   reviewer_id: number
   reviewer_name: string
   audit_remarks: string
   remarks: string
+  materials?: string
+  course_id?: number
+  teacher_id?: number
+  audit_time?: string | null
+  is_modified?: string
+  guarantee_student_id?: number
 }
 
 export interface LeaveCreate {
   student_id: number
   leave_date: string
-  class_hours?: string
-  leave_days: string
+  leave_hours?: string  // 请假课时
   status: string
   leave_type?: string
   remarks?: string
@@ -93,7 +99,6 @@ export interface PaginatedResponse<T> {
 
 // 登录相关类型
 export interface LoginRequest {
-  role: string
   id: string
   password: string
   token: string

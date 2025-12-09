@@ -84,7 +84,7 @@ class StudentCourseService:
             session,
             courses,
             {
-                "student_id": (Student, "student_id", "name", "student_name"),
+                "student_id": (Student, "student_id", "student_name", "student_name"),
                 "course_id": (Course, "course_id", "course_name", "course_name"),
             },
         )
@@ -101,7 +101,7 @@ class StudentCourseService:
                 teachers = session.exec(
                     select(Teacher).where(Teacher.teacher_id.in_(teacher_ids))
                 ).all()
-                teacher_map = {t.teacher_id: t.name for t in teachers}
+                teacher_map = {t.teacher_id: t.teacher_name for t in teachers}
 
                 course_teacher_map = {c.course_id: c.teacher_id for c in courses_info}
                 for item in items:
@@ -145,15 +145,34 @@ class StudentCourseService:
             select(StudentCourse).where(StudentCourse.course_id == course_id)
         ).all()
 
-        # 补充学生信息
+        # 补充学生信息和教师信息
         items = CommonService.inject_relations(
             session,
             enrollments,
             {
-                "student_id": (Student, "student_id", "name", "student_name"),
+                "student_id": (Student, "student_id", "student_name", "student_name"),
                 "course_id": (Course, "course_id", "course_name", "course_name"),
             },
         )
+
+        # 补充 teacher_name
+        course_info = session.exec(
+            select(Course).where(Course.course_id == course_id)
+        ).first()
+
+        if course_info and course_info.teacher_id:
+            teacher = session.exec(
+                select(Teacher).where(Teacher.teacher_id == course_info.teacher_id)
+            ).first()
+            if teacher:
+                for item in items:
+                    item["teacher_name"] = teacher.teacher_name
+            else:
+                for item in items:
+                    item["teacher_name"] = None
+        else:
+            for item in items:
+                item["teacher_name"] = None
 
         return items
 
@@ -207,7 +226,7 @@ class StudentCourseService:
             session,
             enrollments,
             {
-                "student_id": (Student, "student_id", "name", "student_name"),
+                "student_id": (Student, "student_id", "student_name", "student_name"),
                 "course_id": (Course, "course_id", "course_name", "course_name"),
             },
         )

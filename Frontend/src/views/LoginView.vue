@@ -13,18 +13,11 @@
 
         <!-- 登录模式切换 -->
         <div class="login-tabs">
-          <button
-            @click="loginMode = 'password'"
-            :class="['tab-button', { active: loginMode === 'password' }]"
-            type="button"
-          >
+          <button @click="loginMode = 'password'" :class="['tab-button', { active: loginMode === 'password' }]"
+            type="button">
             账号密码登录
           </button>
-          <button
-            @click="generateQRCode"
-            :class="['tab-button', { active: loginMode === 'qrcode' }]"
-            type="button"
-          >
+          <button @click="generateQRCode" :class="['tab-button', { active: loginMode === 'qrcode' }]" type="button">
             扫码登录
           </button>
         </div>
@@ -33,38 +26,14 @@
         <div v-if="loginMode === 'password'" class="login-form-container">
           <form @submit.prevent="handleLogin" class="login-form">
             <div class="form-group">
-              <label for="role" class="form-label">角色</label>
-              <select id="role" v-model="loginForm.role" class="form-select" required>
-                <option value="" disabled>请选择角色</option>
-                <option value="admin">管理员</option>
-                <option value="reviewer">审核员</option>
-                <option value="teacher">教师</option>
-                <option value="student">学生</option>
-              </select>
-            </div>
-
-            <div class="form-group">
               <label for="id" class="form-label">账号</label>
-              <input
-                type="text"
-                id="id"
-                v-model="loginForm.id"
-                class="form-input"
-                placeholder="请输入用户ID"
-                required
-              />
+              <input type="text" id="id" v-model="loginForm.id" class="form-input" placeholder="请输入用户ID" required />
             </div>
 
             <div class="form-group">
               <label for="password" class="form-label">密码</label>
-              <input
-                type="password"
-                id="password"
-                v-model="loginForm.password"
-                class="form-input"
-                placeholder="请输入密码"
-                required
-              />
+              <input type="password" id="password" v-model="loginForm.password" class="form-input" placeholder="请输入密码"
+                required />
             </div>
 
             <button type="submit" class="btn btn-primary btn-lg w-full" :disabled="isLoading">
@@ -142,15 +111,6 @@
   overflow: hidden;
 }
 
-.login-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, var(--primary-500), var(--primary-600));
-}
 
 .login-header {
   text-align: center;
@@ -230,7 +190,7 @@
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-sm);
 }
 
 .form-group {
@@ -272,11 +232,12 @@
   flex-direction: column;
   align-items: center;
   gap: var(--spacing-lg);
+  justify-content: center;
 }
 
 .qrcode-box {
-  width: 200px;
-  height: 200px;
+  width: 150px;
+  height: 150px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -314,8 +275,13 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .qr-token-display {
@@ -324,6 +290,7 @@
   border-radius: var(--radius);
   border: 1px solid var(--border-light);
   word-break: break-all;
+  width: 100%;
 }
 
 .qr-token-display code {
@@ -341,37 +308,37 @@
   .login-page {
     padding: var(--spacing-sm);
   }
-  
+
   .login-container {
     max-width: 100%;
   }
-  
+
   .login-card {
     padding: var(--spacing-lg);
   }
-  
+
   .login-logo {
     width: 56px;
     height: 56px;
   }
-  
+
   .logo-icon {
     font-size: 1.75rem;
   }
-  
+
   .login-title {
     font-size: var(--text-xl);
   }
-  
+
   .login-subtitle {
     font-size: var(--text-sm);
   }
-  
+
   .tab-button {
     padding: 0.5rem 0.75rem;
     font-size: var(--text-xs);
   }
-  
+
   .qrcode-box {
     width: 180px;
     height: 180px;
@@ -382,29 +349,29 @@
   .login-card {
     padding: var(--spacing);
   }
-  
+
   .login-logo {
     width: 48px;
     height: 48px;
   }
-  
+
   .logo-icon {
     font-size: 1.5rem;
   }
-  
+
   .login-title {
     font-size: var(--text-lg);
   }
-  
+
   .login-subtitle {
     font-size: var(--text-xs);
   }
-  
+
   .qrcode-box {
     width: 160px;
     height: 160px;
   }
-  
+
   .form-input,
   .form-select {
     padding: 0.625rem 0.875rem;
@@ -417,7 +384,7 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { login, checkAuth } from '../api'
-import QRCode from 'qrcode'
+import { toDataURL } from 'qrcode'
 import type { LoginResponse, CheckAuthResponse } from '../types'
 
 const router = useRouter()
@@ -491,7 +458,7 @@ const generateQRCode = async () => {
     qrToken.value = generateToken()
 
     // 生成二维码
-    qrCodeDataUrl.value = await QRCode.toDataURL(qrToken.value, {
+    qrCodeDataUrl.value = await toDataURL(qrToken.value, {
       width: 200,
       margin: 2,
       color: {
@@ -535,4 +502,3 @@ const handleQRCodeCheck = async () => {
   }
 }
 </script>
-

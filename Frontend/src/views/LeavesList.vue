@@ -1,26 +1,10 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { usePagedData } from '../composables/usePagedData'
-import { useNavigation } from '../composables/useNavigation'
+import { ref, reactive } from 'vue'
+import GenericList from '../components/GenericList.vue'
 import { formatDate, getStatusBadgeClass } from '../utils/formatters'
-import { createLeave, getAllCourses, getStudentCourses } from '../api'
-import PaginationControls from '../components/PaginationControls.vue'
+import { exportToExcel } from '../utils/excelExporter'
+import { createLeave, getAllCourses, getStudentCourses, editLeave, auditLeave } from '../api'
 import type { Leave, LeaveCreate, Course, StudentCourseResponse } from '../types'
-
-// 使用分页组合式函数
-const {
-  data: leaves,
-  loading,
-  error,
-  currentPage,
-  total,
-  totalPages,
-  pageSize,
-  fetchData: fetchLeaves,
-  goToPage,
-  setPageSize
-} = usePagedData<Leave>('/leaves')
-const { goToHome } = useNavigation()
 
 // 创建请假条相关状态
 const showCreateModal = ref(false)
@@ -28,6 +12,22 @@ const isCreating = ref(false)
 const createError = ref('')
 const courses = ref<Course[]>([])
 const coursesLoading = ref(false)
+
+// 编辑请假条相关状态
+const showEditModal = ref(false)
+const isEditing = ref(false)
+const editError = ref('')
+const currentEditLeave = ref<Leave | null>(null)
+
+// 审核请假条相关状态
+const showAuditModal = ref(false)
+const isAuditing = ref(false)
+const auditError = ref('')
+const currentAuditLeave = ref<Leave | null>(null)
+const auditForm = reactive({
+  status: '',
+  audit_remarks: ''
+})
 
 // 获取当前用户信息
 const currentUserId = parseInt(localStorage.getItem('id') || '0')
@@ -37,7 +37,7 @@ const currentUserRole = localStorage.getItem('role') || ''
 const leaveForm = reactive<LeaveCreate>({
   student_id: currentUserId, // 默认使用当前用户的ID
   leave_date: '',
-  leave_days: '',
+  leave_hours: '',
   status: '待审批',
   leave_type: '',
   remarks: '',
@@ -91,7 +91,7 @@ const openCreateModal = async () => {
   Object.assign(leaveForm, {
     student_id: currentUserRole === 'student' ? currentUserId : 0, // 学生角色使用自己的ID
     leave_date: '',
-    leave_days: '',
+    leave_hours: '',
     status: '待审批',
     leave_type: '',
     remarks: '',
@@ -130,8 +130,8 @@ const handleCreateLeave = async () => {
     createError.value = ''
 
     // 验证必填字段
-    if (!leaveForm.student_id || !leaveForm.leave_date || !leaveForm.leave_days) {
-      createError.value = '请填写必填字段：学生ID、请假日期、请假天数'
+    if (!leaveForm.student_id || !leaveForm.leave_date || !leaveForm.leave_hours) {
+      createError.value = '请填写必填字段：学生ID、请假日期、请假课时'
       return
     }
 
@@ -139,7 +139,7 @@ const handleCreateLeave = async () => {
     const formattedData: any = {
       student_id: parseInt(leaveForm.student_id.toString()),
       leave_date: leaveForm.leave_date, // 直接使用日期字符串，后端会处理时间
-      leave_days: leaveForm.leave_days.slice(0, 8), // 限制长度为8
+      leave_hours: leaveForm.leave_hours ? leaveForm.leave_hours.toString() : '',
       status: leaveForm.status || '待审批'
     }
 
@@ -172,7 +172,7 @@ const handleCreateLeave = async () => {
 
     // 创建成功，关闭弹窗并刷新列表
     closeCreateModal()
-    fetchLeaves()
+    refreshData()
 
   } catch (error: any) {
     console.error('创建请假条失败:', error)
@@ -198,87 +198,379 @@ const handleCreateLeave = async () => {
   }
 }
 
-// 组件挂载时获取数据
-onMounted(() => {
-  fetchLeaves()
-})
+// 打开编辑弹窗
+const openEditModal = async (leave: Leave) => {
+  showEditModal.value = true
+  editError.value = ''
+  currentEditLeave.value = leave
+
+  // 先获取课程数据
+  await fetchCourses()
+
+  // 用请假条当前数据填充表单
+  Object.assign(leaveForm, {
+    student_id: leave.student_id,
+    leave_date: leave.leave_date ? new Date(leave.leave_date).toISOString().split('T')[0] : '',
+    leave_hours: leave.leave_hours || '',
+    leave_type: leave.leave_type || '',
+    remarks: leave.remarks || '',
+    materials: leave.materials || '',
+    course_id: leave.course_id || 0,
+    teacher_id: leave.teacher_id || 0
+  })
+}
+
+// 关闭编辑弹窗
+const closeEditModal = () => {
+  showEditModal.value = false
+  editError.value = ''
+  currentEditLeave.value = null
+}
+
+// 处理编辑请假条
+const handleEditLeave = async () => {
+  try {
+    isEditing.value = true
+    editError.value = ''
+
+    if (!currentEditLeave.value) return
+
+    // 验证必填字段
+    if (!leaveForm.student_id || !leaveForm.leave_date || !leaveForm.leave_hours) {
+      editError.value = '请填写必填字段：学生ID、请假日期、请假课时'
+      return
+    }
+
+    // 格式化数据以符合 API 要求
+    const formattedData: any = {
+      student_id: parseInt(leaveForm.student_id.toString()),
+      leave_date: leaveForm.leave_date,
+      leave_hours: leaveForm.leave_hours ? leaveForm.leave_hours.toString() : '',
+      status: currentEditLeave.value.status // 保持原有状态
+    }
+
+    // 如果选择了课程，添加课程ID和教师ID
+    if (leaveForm.course_id && leaveForm.course_id > 0) {
+      formattedData.course_id = parseInt(leaveForm.course_id.toString())
+
+      const selectedCourse = courses.value.find(c => c.course_id === leaveForm.course_id)
+      if (selectedCourse) {
+        formattedData.teacher_id = selectedCourse.teacher_id
+      }
+    }
+
+    // 只添加有值的可选字段
+    if (leaveForm.leave_type) {
+      formattedData.leave_type = leaveForm.leave_type.slice(0, 8)
+    }
+    if (leaveForm.remarks) {
+      formattedData.remarks = leaveForm.remarks.slice(0, 100)
+    }
+    if (leaveForm.materials) {
+      formattedData.materials = leaveForm.materials.slice(0, 100)
+    }
+
+    console.log('提交编辑请假条数据:', formattedData)
+
+    // 调用编辑API
+    await editLeave(currentEditLeave.value.leave_id, formattedData)
+
+    // 编辑成功，关闭弹窗并刷新列表
+    closeEditModal()
+    refreshData()
+
+  } catch (error: any) {
+    console.error('编辑请假条失败:', error)
+
+    let errorMessage = '编辑失败，请重试'
+    if (error.response?.data) {
+      const errorData = error.response.data
+      if (errorData.detail && Array.isArray(errorData.detail)) {
+        errorMessage = errorData.detail.map((item: any) => `${item.loc?.join('.')}: ${item.msg}`).join('; ')
+      } else if (errorData.message) {
+        errorMessage = errorData.message
+      } else if (typeof errorData === 'string') {
+        errorMessage = errorData
+      }
+    }
+
+    editError.value = errorMessage
+  } finally {
+    isEditing.value = false
+  }
+}
+
+// 打开审核弹窗
+const openAuditModal = (leave: Leave) => {
+  showAuditModal.value = true
+  auditError.value = ''
+  currentAuditLeave.value = leave
+
+  // 审核表单初始化为空，让审核人重新选择
+  Object.assign(auditForm, {
+    status: '',
+    audit_remarks: ''
+  })
+}
+
+// 关闭审核弹窗
+const closeAuditModal = () => {
+  showAuditModal.value = false
+  auditError.value = ''
+  currentAuditLeave.value = null
+  Object.assign(auditForm, {
+    status: '',
+    audit_remarks: ''
+  })
+}
+
+// 处理审核请假条
+const handleAuditLeave = async () => {
+  try {
+    isAuditing.value = true
+    auditError.value = ''
+
+    if (!currentAuditLeave.value) return
+
+    // 验证必填字段
+    if (!auditForm.status) {
+      auditError.value = '请选择审核状态'
+      return
+    }
+
+    // 准备审核数据 - 需要包含原始数据的必要字段
+    const auditData: any = {
+      status: auditForm.status,
+      audit_remarks: auditForm.audit_remarks ? auditForm.audit_remarks.slice(0, 100) : null,
+      leave_hours: currentAuditLeave.value.leave_hours ? currentAuditLeave.value.leave_hours.toString() : ''
+    }
+
+    // 添加其他必要字段
+    if (currentAuditLeave.value.student_id) {
+      auditData.student_id = currentAuditLeave.value.student_id
+    }
+    if (currentAuditLeave.value.leave_date) {
+      auditData.leave_date = currentAuditLeave.value.leave_date
+    }
+    if (currentAuditLeave.value.leave_type) {
+      auditData.leave_type = currentAuditLeave.value.leave_type.slice(0, 8)
+    }
+    if (currentAuditLeave.value.remarks) {
+      auditData.remarks = currentAuditLeave.value.remarks.slice(0, 100)
+    }
+    if (currentAuditLeave.value.materials) {
+      auditData.materials = currentAuditLeave.value.materials.slice(0, 100)
+    }
+    if (currentAuditLeave.value.course_id) {
+      auditData.course_id = currentAuditLeave.value.course_id
+    }
+    if (currentAuditLeave.value.teacher_id) {
+      auditData.teacher_id = currentAuditLeave.value.teacher_id
+    }
+
+    console.log('提交审核数据:', auditData)
+
+    // 调用审核API
+    await auditLeave(currentAuditLeave.value.leave_id, auditData)
+
+    // 审核成功，关闭弹窗并刷新列表
+    closeAuditModal()
+    refreshData()
+
+  } catch (error: any) {
+    console.error('审核请假条失败:', error)
+
+    let errorMessage = '审核失败，请重试'
+    if (error.response?.data) {
+      const errorData = error.response.data
+      if (errorData.detail && Array.isArray(errorData.detail)) {
+        errorMessage = errorData.detail.map((item: any) => `${item.loc?.join('.')}: ${item.msg}`).join('; ')
+      } else if (errorData.message) {
+        errorMessage = errorData.message
+      } else if (typeof errorData === 'string') {
+        errorMessage = errorData
+      }
+    }
+
+    auditError.value = errorMessage
+  } finally {
+    isAuditing.value = false
+  }
+}
+
+// 导出相关状态
+const isExporting = ref(false)
+
+// 导出CSV
+const handleExportCSV = async () => {
+  try {
+    isExporting.value = true
+
+    // 获取所有数据，不分页
+    const token = localStorage.getItem('token')
+    if (!token) {
+      console.error('未找到 token，无法导出')
+      return
+    }
+
+    console.log('正在获取所有数据用于导出...')
+
+    let allData: any[] = []
+    let currentPage = 1
+    let hasMoreData = true
+
+    // 循环获取所有页面的数据
+    while (hasMoreData) {
+      const params = new URLSearchParams({
+        token,
+        page: currentPage.toString(),
+        page_size: '100' // 设置为最大值100
+      })
+
+      const response = await fetch(`/api/v1/leaves?${params}`)
+      if (!response.ok) {
+        throw new Error(`导出失败: ${response.statusText}`)
+      }
+
+      const result = await response.json()
+      const currentPageData = result.items || []
+
+      // 将当前页数据添加到总数据中
+      allData = allData.concat(currentPageData)
+
+      console.log(`已获取第 ${currentPage} 页数据，本页 ${currentPageData.length} 条，累计 ${allData.length} 条`)
+
+      // 检查是否还有下一页
+      if (currentPageData.length < 100) {
+        hasMoreData = false
+      } else {
+        currentPage++
+      }
+    }
+
+    if (allData.length === 0) {
+      alert('没有数据可以导出')
+      return
+    }
+
+    // 定义 CSV 列名和对应的数据键
+    const headers = [
+      '请假ID',
+      '学生ID',
+      '学生名称',
+      '请假类型',
+      '请假课时',
+      '请假时间',
+      '备注',
+      '状态',
+      '审核人ID',
+      '审核人姓名',
+      '审核意见',
+      '审核时间',
+      '材料',
+      '课程ID',
+      '教师ID'
+    ]
+
+    // 转换数据格式
+    const csvData = allData.map((item: any) => ({
+      '请假ID': item.leave_id,
+      '学生ID': item.student_id,
+      '学生名称': item.student_name || '',
+      '请假类型': item.leave_type || '',
+      '请假课时': item.leave_hours || '',
+      '请假时间': item.leave_date ? new Date(item.leave_date).toLocaleString('zh-CN') : '',
+      '备注': item.remarks || '',
+      '状态': item.status || '',
+      '审核人ID': item.reviewer_id || '',
+      '审核人姓名': item.reviewer_name || '',
+      '审核意见': item.audit_remarks || '',
+      '审核时间': item.audit_time ? new Date(item.audit_time).toLocaleString('zh-CN') : '',
+      '材料': item.materials || '',
+      '课程ID': item.course_id || '',
+      '教师ID': item.teacher_id || ''
+    }))
+
+    // 导出为 Excel
+    exportToExcel(csvData, '请假条数据', headers)
+
+  } catch (error: any) {
+    console.error('导出失败:', error)
+    alert(`导出失败: ${error.message || '未知错误'}`)
+  } finally {
+    isExporting.value = false
+  }
+}
+
+// 判断是否可以编辑（学生只能编辑自己的请假条）
+const canEdit = (leave: Leave): boolean => {
+  return currentUserRole === 'student' && leave.student_id === currentUserId && leave.status === '待审批'
+}
+
+// 判断是否可以审核（审核员/教师可以审核待审批的请假条）
+const canAudit = (leave: Leave): boolean => {
+  return (currentUserRole === 'reviewer' || currentUserRole === 'teacher') && leave.status === '待审批'
+}
+
+// 刷新数据的函数，用于在创建/编辑/审核后刷新列表
+const refreshData = () => {
+  // GenericList组件会自动处理刷新，这里可以添加其他逻辑
+  console.log('数据已刷新')
+}
 </script>
 
 <template>
   <div class="leaves-page">
-    <div class="container">
-      <div class="page-header">
-        <h1 class="page-title">请假条列表</h1>
-        <div class="header-buttons">
-          <button @click="openCreateModal" class="btn btn-primary">
-            创建请假条
-          </button>
-          <button @click="goToHome" class="btn btn-back">返回首页</button>
-        </div>
-      </div>
-
-      <div v-if="loading" class="loading">
-        <div class="loading-spinner"></div>
-        <span>正在加载数据...</span>
-      </div>
-      <div v-else-if="error" class="error">
-        <span>{{ error }}</span>
-      </div>
-      <div v-else class="page-content">
-        <div class="stats-card">
-          <p class="stats-text">共 {{ total }} 张请假条 (第 {{ currentPage }} / {{ totalPages }} 页)</p>
-        </div>
-
-        <div v-if="leaves.length === 0" class="empty-state">
-          <div class="empty-icon">📝</div>
-          <h3>暂无请假条数据</h3>
-          <p>请等待数据添加完成后再来查看</p>
-        </div>
-
-        <div v-else class="data-section">
-          <div class="table-container">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>请假ID</th>
-                  <th>学生ID</th>
-                  <th>请假类型</th>
-                  <th>请假天数</th>
-                  <th>请假时间</th>
-                  <th>状态</th>
-                  <th>审核人ID</th>
-                  <th>审核人姓名</th>
-                  <th>审核意见</th>
-                  <th>备注</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="leave in leaves" :key="leave.leave_id" class="table-row">
-                  <td class="table-cell">{{ leave.leave_id }}</td>
-                  <td class="table-cell">{{ leave.student_id }}</td>
-                  <td class="table-cell">{{ leave.leave_type }}</td>
-                  <td class="table-cell">{{ leave.leave_days }}</td>
-                  <td class="table-cell">{{ formatDate(leave.leave_date) }}</td>
-                  <td class="table-cell">
-                    <span :class="getStatusBadgeClass(leave.status)" class="badge">
-                      {{ leave.status }}
-                    </span>
-                  </td>
-                  <td class="table-cell">{{ leave.reviewer_id }}</td>
-                  <td class="table-cell">{{ leave.reviewer_name }}</td>
-                  <td class="table-cell">{{ leave.audit_remarks }}</td>
-                  <td class="table-cell">{{ leave.remarks }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- 分页控件 -->
-          <PaginationControls :current-page="currentPage" :total-pages="totalPages" :total="total" :page-size="pageSize"
-            :loading="loading" @page-change="goToPage" @page-size-change="setPageSize" />
-        </div>
+    <!-- 自定义页面头部，包含创建按钮 -->
+    <div class="page-header">
+      <h1 class="page-title">请假条列表</h1>
+      <div class="header-buttons">
+        <button @click="openCreateModal" class="btn btn-primary">
+          创建请假条
+        </button>
+        <button @click="handleExportCSV" class="btn btn-export" :disabled="isExporting">
+          {{ isExporting ? '导出中...' : '导出Excel' }}
+        </button>
       </div>
     </div>
+
+    <GenericList
+      endpoint="/leaves"
+      title=""
+      item-label="张请假条"
+      :show-actions="true"
+      :hide-export="true"
+      :hide-back-button="true"
+      :columns="[
+        { key: 'leave_id', label: '请假ID' },
+        { key: 'student_name', label: '学生名称' },
+        { key: 'leave_type', label: '请假类型' },
+        { key: 'leave_hours', label: '请假课时' },
+        {
+          key: 'leave_date',
+          label: '请假时间',
+          formatter: formatDate
+        },
+        { key: 'remarks', label: '备注' },
+        {
+          key: 'status',
+          label: '状态'
+        },
+        { key: 'reviewer_name', label: '审核人姓名' },
+        { key: 'audit_remarks', label: '审核意见' }
+      ]"
+    >
+      <template #actions="{ item }">
+        <div class="action-buttons">
+          <button v-if="canEdit(item)" @click="openEditModal(item)" class="btn btn-warning btn-sm">
+            修改
+          </button>
+          <button v-if="canAudit(item)" @click="openAuditModal(item)" class="btn btn-primary btn-sm">
+            审核
+          </button>
+        </div>
+      </template>
+    </GenericList>
 
     <!-- 创建请假条弹窗 -->
     <div v-if="showCreateModal" class="modal-overlay" @click.self="closeCreateModal">
@@ -317,8 +609,8 @@ onMounted(() => {
 
           <div class="form-row">
             <div class="form-group">
-              <label for="leave_days">请假天数 *</label>
-              <input type="text" id="leave_days" v-model="leaveForm.leave_days" required placeholder="如：1天、2小时等" />
+              <label for="leave_hours">请假课时 *</label>
+              <input type="number" id="leave_hours" v-model="leaveForm.leave_hours" required placeholder="数字" />
             </div>
             <div class="form-group">
               <label for="leave_type">请假类型</label>
@@ -354,16 +646,123 @@ onMounted(() => {
         </form>
       </div>
     </div>
+
+    <!-- 编辑请假条弹窗 -->
+    <div v-if="showEditModal" class="modal-overlay" @click.self="closeEditModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>修改请假条</h3>
+        </div>
+
+        <form @submit.prevent="handleEditLeave" class="modal-form">
+          <div class="form-row-two">
+            <div class="form-group">
+              <label for="edit_student_id">
+                学生ID
+              </label>
+              <input type="number" id="edit_student_id" v-model="leaveForm.student_id" readonly disabled
+                class="readonly-input" :placeholder="`当前用户ID: ${currentUserId}`" min="1" />
+            </div>
+            <div class="form-group">
+              <label for="edit_leave_date">请假日期 *</label>
+              <input type="date" id="edit_leave_date" v-model="leaveForm.leave_date" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="edit_course">课程</label>
+            <select id="edit_course" v-model="leaveForm.course_id" @change="handleCourseChange">
+              <option value="0">请选择课程</option>
+              <option v-if="coursesLoading" value="">加载中...</option>
+              <option v-for="course in courses" :key="course.course_id" :value="course.course_id">
+                {{ course.course_name }} ({{ course.teacher_name }})
+              </option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="edit_leave_hours">请假课时 *</label>
+              <input type="number" id="edit_leave_hours" v-model="leaveForm.leave_hours" required placeholder="数字" />
+            </div>
+            <div class="form-group">
+              <label for="edit_leave_type">请假类型</label>
+              <select id="edit_leave_type" v-model="leaveForm.leave_type">
+                <option value="">请选择请假类型</option>
+                <option value="病假">病假</option>
+                <option value="事假">事假</option>
+                <option value="公假">公假</option>
+                <option value="其他">其他</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="edit_remarks">备注</label>
+            <textarea id="edit_remarks" v-model="leaveForm.remarks" rows="3" placeholder="请输入请假事由等备注信息"
+              maxlength="100"></textarea>
+          </div>
+
+          <!-- 错误信息 -->
+          <div v-if="editError" class="error-message">
+            {{ editError }}
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" @click="closeEditModal" class="btn btn-secondary">
+              取消
+            </button>
+            <button type="submit" class="btn btn-primary" :disabled="isEditing">
+              {{ isEditing ? '修改中...' : '确认修改' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 审核请假条弹窗 -->
+    <div v-if="showAuditModal" class="modal-overlay" @click.self="closeAuditModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>审核请假条</h3>
+        </div>
+
+        <form @submit.prevent="handleAuditLeave" class="modal-form">
+          <div class="form-group">
+            <label for="audit_status">审核状态 *</label>
+            <select id="audit_status" v-model="auditForm.status" required>
+              <option value="">请选择审核状态</option>
+              <option value="已批准">已批准</option>
+              <option value="已拒绝">已拒绝</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="audit_remarks">审核备注</label>
+            <textarea id="audit_remarks" v-model="auditForm.audit_remarks" rows="4" placeholder="请输入审核意见"
+              maxlength="100"></textarea>
+          </div>
+
+          <!-- 错误信息 -->
+          <div v-if="auditError" class="error-message">
+            {{ auditError }}
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" @click="closeAuditModal" class="btn btn-secondary">
+              取消
+            </button>
+            <button type="submit" class="btn btn-primary" :disabled="isAuditing">
+              {{ isAuditing ? '审核中...' : '确认审核' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.leaves-page {
-  min-height: 100vh;
-  background-color: var(--bg-secondary);
-  padding: var(--spacing-lg) 0;
-}
-
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -385,180 +784,29 @@ onMounted(() => {
   gap: var(--spacing);
 }
 
-.btn-back {
-  background-color: var(--gray-100);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-medium);
+.btn-export {
+  background-color: #10b981;
+  color: white;
+  border: none;
   padding: 0.5rem 1rem;
   border-radius: var(--radius);
+  font-size: var(--text-sm);
   font-weight: 500;
+  cursor: pointer;
   transition: all var(--transition);
 }
 
-.btn-back:hover {
-  background-color: var(--gray-200);
-  color: var(--text-primary);
-  border-color: var(--border-dark);
+.btn-export:hover {
+  background-color: #059669;
+  color: white;
 }
 
-.page-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-lg);
+.btn-export:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
-.stats-card {
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing);
-  box-shadow: var(--shadow);
-}
-
-.stats-text {
-  font-size: var(--text-base);
-  color: var(--text-secondary);
-  margin: 0;
-  font-weight: 500;
-}
-
-.loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--spacing-2xl);
-  color: var(--text-secondary);
-  gap: var(--spacing);
-}
-
-.loading-spinner {
-  width: 2rem;
-  height: 2rem;
-  border: 2px solid var(--border-light);
-  border-top: 2px solid var(--primary-600);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.error {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--spacing-2xl);
-  color: var(--error);
-  background-color: var(--error-light);
-  border: 1px solid #fca5a5;
-  border-radius: var(--radius-lg);
-  font-weight: 500;
-}
-
-.empty-state {
-  text-align: center;
-  padding: var(--spacing-2xl);
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-}
-
-.empty-icon {
-  font-size: 3rem;
-  margin-bottom: var(--spacing);
-  opacity: 0.5;
-}
-
-.empty-state h3 {
-  font-size: var(--text-xl);
-  color: var(--text-primary);
-  margin-bottom: var(--spacing-sm);
-}
-
-.empty-state p {
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-.data-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-lg);
-}
-
-.table-container {
-  overflow-x: auto;
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.data-table th,
-.data-table td {
-  padding: 1rem;
-  text-align: left;
-  border-bottom: 1px solid var(--border-light);
-}
-
-.data-table th {
-  background-color: var(--gray-50);
-  font-weight: 600;
-  color: var(--text-primary);
-  border-bottom: 2px solid var(--border-medium);
-  font-size: var(--text-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.025em;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.data-table td {
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-}
-
-.table-row {
-  transition: background-color var(--transition-fast);
-}
-
-.table-row:hover {
-  background-color: var(--gray-50);
-}
-
-.table-row:last-child .table-cell {
-  border-bottom: none;
-}
-
-.table-cell {
-  position: relative;
-  vertical-align: middle;
-}
-
-.badge {
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  font-size: var(--text-xs);
-  font-weight: 500;
-  border-radius: var(--radius);
-  text-transform: uppercase;
-  letter-spacing: 0.025em;
-}
 
 /* 弹窗样式 */
 .modal-overlay {
@@ -725,6 +973,30 @@ onMounted(() => {
   font-weight: 500;
 }
 
+
+.btn-export {
+  background-color: #10b981;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btn-export:hover {
+  background-color: #059669;
+  color: white;
+}
+
+.btn-export:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 .modal-footer {
   display: flex;
   justify-content: flex-end;
@@ -784,28 +1056,4 @@ onMounted(() => {
   }
 }
 
-@media (max-width: 480px) {
-  .page-header {
-    padding-bottom: var(--spacing-sm);
-  }
-
-  .page-title {
-    font-size: var(--text-xl);
-    text-align: center;
-  }
-
-  .header-buttons {
-    flex-direction: column;
-    gap: var(--spacing-sm);
-  }
-
-  .modal-overlay {
-    padding: var(--spacing-sm);
-  }
-
-  .data-table th,
-  .data-table td {
-    padding: 0.5rem 0.25rem;
-  }
-}
 </style>

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
 from app.database.connection import get_session
-from app.schemas import UserLogin, AdminCreate
+from app.schemas import UserLogin, AdminCreate, ChangePassword
 from app.models import Admin, Login
 from app.services.auth import AuthService
 from app.api.deps import check_login, logout
@@ -68,3 +68,24 @@ def create_admin(
         return admin
     else:
         raise HTTPException(status_code=400, detail="Admin already exists")
+
+
+@router.post("/change-password", summary="修改密码")
+def change_password(
+    token: str,
+    password_data: ChangePassword,
+    session: Session = Depends(get_session),
+):
+    """修改密码接口 - 修改自己的密码"""
+    return AuthService.change_password(token, password_data, session, None)
+
+
+@router.post("/change-password/{user_id}", summary="修改指定用户密码")
+def change_user_password(
+    user_id: int,
+    token: str,
+    password_data: ChangePassword,
+    session: Session = Depends(get_session),
+):
+    """修改指定用户密码接口 - 仅管理员可用"""
+    return AuthService.change_password(token, password_data, session, user_id)

@@ -1,5 +1,5 @@
 from app.schemas.pagination import PaginatedResponse
-from app.schemas.login import UserLogin
+from app.schemas.login import UserLogin, ChangePassword
 from app.schemas.admin import AdminCreate
 from app.schemas.reviewer import ReviewerCreate
 from app.schemas.student import StudentCreate
@@ -10,6 +10,7 @@ from app.schemas.student_course import StudentCourseCreate, StudentCourseRespons
 __all__ = [
     "PaginatedResponse",
     "UserLogin",
+    "ChangePassword",
     "AdminCreate",
     "ReviewerCreate",
     "StudentCreate",

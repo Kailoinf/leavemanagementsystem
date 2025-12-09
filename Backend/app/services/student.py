@@ -49,7 +49,14 @@ class StudentService:
         items = CommonService.inject_relations(
             session,
             students,
-            {"reviewer_id": (Reviewer, "reviewer_id", "name", "reviewer_name")},
+            {
+                "reviewer_id": (
+                    Reviewer,
+                    "reviewer_id",
+                    "reviewer_name",
+                    "reviewer_name",
+                )
+            },
         )
         return items, total, total_pages
 

@@ -5,7 +5,6 @@ import { useApiCount } from '../composables/useApiData'
 import { useNavigation } from '../composables/useNavigation'
 import { logout } from '../api'
 import { clearAuth } from '../utils/auth'
-import GenericStatsCard from '../components/GenericStatsCard.vue'
 import GenericFeatureCard from '../components/GenericFeatureCard.vue'
 import type { CountResponse } from '../types'
 
@@ -18,6 +17,11 @@ const { data: courseResponse, fetchCount: getCourseCount, error: courseError } =
 
 const router = useRouter()
 const { goToStudents, goToLeaves, goToReviewers, goToTeachers, goToCourses } = useNavigation()
+
+// 导航到个人资料页面
+const goToProfile = () => {
+  router.push('/profile')
+}
 
 // 用户信息
 const userInfo = computed(() => {
@@ -124,9 +128,14 @@ onMounted(() => {
               </div>
             </div>
 
-            <button @click="handleLogout" class="btn btn-ghost btn-sm logout-btn">
-              退出登录
-            </button>
+            <div class="header-buttons">
+              <button @click="goToProfile" class="btn btn-outline btn-sm">
+                个人资料
+              </button>
+              <button @click="handleLogout" class="btn btn-ghost btn-sm logout-btn">
+                退出登录
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -224,6 +233,12 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: var(--spacing-lg);
+}
+
+.header-buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing);
 }
 
 .user-profile {

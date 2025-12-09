@@ -7,8 +7,7 @@ class Leave(SQLModel, table=True):
     leave_id: int = Field(primary_key=True)
     student_id: int = Field(foreign_key="student.student_id")
     leave_date: datetime
-    class_hours: Optional[str] = Field(max_length=8, default=None)
-    leave_days: str = Field(max_length=8)
+    leave_hours: Optional[str] = Field(max_length=8, default=None)
     status: str = Field(max_length=8)
     leave_type: Optional[str] = Field(max_length=8, default=None)
     remarks: Optional[str] = Field(max_length=100, default=None)

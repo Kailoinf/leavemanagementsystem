@@ -33,11 +33,7 @@ def create_tables():
 
 def create_admin(session: Session):
     """创建管理员用户"""
-    admin = Admin(
-        admin_id=8001,
-        name="管理员",
-        password=hash_password("1")
-    )
+    admin = Admin(admin_id=8001, name="管理员", password=hash_password("1"))
     session.add(admin)
     session.commit()
     print(f"创建管理员: {admin.name} (ID: {admin.admin_id}, 密码: 1)")
@@ -47,10 +43,51 @@ def create_admin(session: Session):
 def create_test_reviewers(session: Session):
     """创建测试审核员数据 - 随机名称"""
     # 随机中文姓名生成
-    surnames = ["李", "王", "张", "刘", "陈", "杨", "赵", "黄", "周", "吴", "徐", "孙", "胡", "朱", "高"]
-    names = ["伟", "芳", "娜", "秀英", "敏", "静", "丽", "强", "磊", "军", "洋", "勇", "艳", "杰", "涛"]
+    surnames = [
+        "李",
+        "王",
+        "张",
+        "刘",
+        "陈",
+        "杨",
+        "赵",
+        "黄",
+        "周",
+        "吴",
+        "徐",
+        "孙",
+        "胡",
+        "朱",
+        "高",
+    ]
+    names = [
+        "伟",
+        "芳",
+        "娜",
+        "秀英",
+        "敏",
+        "静",
+        "丽",
+        "强",
+        "磊",
+        "军",
+        "洋",
+        "勇",
+        "艳",
+        "杰",
+        "涛",
+    ]
 
-    schools = ["学生处", "教务处", "计算机系", "软件工程学院", "电子信息学院", "自动化学院", "数学系", "物理学院"]
+    schools = [
+        "学生处",
+        "教务处",
+        "计算机系",
+        "软件工程学院",
+        "电子信息学院",
+        "自动化学院",
+        "数学系",
+        "物理学院",
+    ]
     roles = ["处长", "主任", "辅导员", "书记", "副院长", "科长", "组长", "主管"]
 
     created_reviewers = []
@@ -62,15 +99,17 @@ def create_test_reviewers(session: Session):
 
         reviewer = Reviewer(
             reviewer_id=reviewer_id,
-            name=name,
+            reviewer_name=name,
             school=school,
             role=role,
-            password=hash_password("1")
+            password=hash_password("1"),
         )
 
         session.add(reviewer)
         created_reviewers.append(reviewer)
-        print(f"创建审核员: {reviewer.name} (ID: {reviewer.reviewer_id}, {school}{role}, 密码: 1)")
+        print(
+            f"创建审核员: {reviewer.reviewer_name} (ID: {reviewer.reviewer_id}, {school}{role}, 密码: 1)"
+        )
 
     session.commit()
     return created_reviewers
@@ -87,15 +126,11 @@ def create_test_teachers(session: Session):
         teacher_id = 2001 + i
         name = random.choice(surnames) + random.choice(names)
 
-        teacher = Teacher(
-            teacher_id=teacher_id,
-            name=name,
-            password=hash_password("1")
-        )
+        teacher = Teacher(teacher_id=teacher_id, teacher_name=name, password=hash_password("1"))
 
         session.add(teacher)
         created_teachers.append(teacher)
-        print(f"创建教师: {teacher.name} (ID: {teacher.teacher_id}, 密码: 1)")
+        print(f"创建教师: {teacher.teacher_name} (ID: {teacher.teacher_id}, 密码: 1)")
 
     session.commit()
     return created_teachers
@@ -104,10 +139,26 @@ def create_test_teachers(session: Session):
 def create_test_courses(session: Session, teachers):
     """创建测试课程数据 - 每个老师教授所有课程"""
     course_names = [
-        "数据结构", "算法分析", "数据库原理", "软件工程", "计算机网络",
-        "操作系统", "Web开发", "移动应用开发", "人工智能", "机器学习",
-        "编译原理", "计算机组成原理", "离散数学", "线性代数", "概率统计",
-        "云计算", "大数据技术", "网络安全", "物联网工程", "区块链技术"
+        "数据结构",
+        "算法分析",
+        "数据库原理",
+        "软件工程",
+        "计算机网络",
+        "操作系统",
+        "Web开发",
+        "移动应用开发",
+        "人工智能",
+        "机器学习",
+        "编译原理",
+        "计算机组成原理",
+        "离散数学",
+        "线性代数",
+        "概率统计",
+        "云计算",
+        "大数据技术",
+        "网络安全",
+        "物联网工程",
+        "区块链技术",
     ]
 
     created_courses = []
@@ -119,14 +170,16 @@ def create_test_courses(session: Session, teachers):
             course_data = {
                 "course_id": course_id_counter,
                 "teacher_id": teacher.teacher_id,
-                "course_name": f"{teacher.name}的{course_name}",
+                "course_name": f"{teacher.teacher_name}的{course_name}",
                 "class_hours": str(random.randint(32, 80)),
             }
 
             course = Course(**course_data)
             session.add(course)
             created_courses.append(course)
-            print(f"创建课程: {course.course_name} (ID: {course.course_id}, 教师: {teacher.name})")
+            print(
+                f"创建课程: {course.course_name} (ID: {course.course_id}, 教师: {teacher.teacher_name})"
+            )
 
             course_id_counter += 1
 
@@ -136,17 +189,26 @@ def create_test_courses(session: Session, teachers):
 
 def create_test_students(session: Session, reviewers):
     """创建测试学生数据"""
-    schools = ["计算机系", "软件工程", "电子信息", "自动化", "数学系", "物理学院", "化学学院"]
+    schools = [
+        "计算机系",
+        "软件工程",
+        "电子信息",
+        "自动化",
+        "数学系",
+        "物理学院",
+        "化学学院",
+    ]
 
     created_students = []
     for i in range(1, 151):  # 创建150个学生
         student_data = {
             "student_id": 4000 + i,
-            "name": f"学生{i:03d}",
+            "student_name": f"学生{i:03d}",
             "password": "1",
             "school": random.choice(schools),
             "reviewer_id": random.choice(reviewers).reviewer_id,  # 随机分配审核员
-            "guarantee_permission": datetime.now() + timedelta(days=random.randint(1, 365)),
+            "guarantee_permission": datetime.now()
+            + timedelta(days=random.randint(1, 365)),
         }
 
         password_plain = student_data.pop("password", None)
@@ -156,7 +218,9 @@ def create_test_students(session: Session, reviewers):
 
         session.add(student)
         created_students.append(student)
-        print(f"创建学生: {student.name} (学号: {student.student_id}, 密码: 1, 审核员: {student.reviewer_id})")
+        print(
+            f"创建学生: {student.student_name} (学号: {student.student_id}, 密码: 1, 审核员: {student.reviewer_id})"
+        )
 
     session.commit()
     return created_students
@@ -176,12 +240,12 @@ def create_student_course_enrollments(session: Session, students, courses):
                 student_id=student.student_id,
                 course_id=course.course_id,
                 enrollment_date=datetime.now().strftime("%Y-%m-%d"),
-                status="已选课"
+                status="已选课",
             )
             session.add(enrollment)
             created_enrollments.append(enrollment)
 
-        print(f"学生 {student.name} 选择了 {num_courses} 门课程")
+        print(f"学生 {student.student_name} 选择了 {num_courses} 门课程")
 
     session.commit()
     print(f"创建了 {len(created_enrollments)} 条选课记录")
@@ -222,25 +286,30 @@ def create_test_leaves(session: Session, students, courses):
                 "leave_id": leave_id_counter,
                 "student_id": student.student_id,
                 "leave_date": leave_date,
-                "class_hours": f"{random.randint(1, 8)}",
-                "leave_days": str(leave_days),
+                "leave_hours": f"{random.randint(1, 8)}课时",
                 "status": random.choice(status_types),
                 "leave_type": random.choice(leave_types),
-                "remarks": f"{student.name}的请假申请",
+                "remarks": f"{student.student_name}的请假申请",
                 "materials": "请假材料.pdf" if random.random() > 0.6 else "",
                 "reviewer_id": student.reviewer_id,  # 使用学生的审核员
                 "teacher_id": selected_course.teacher_id,
-                "audit_remarks": "审核通过" if random.random() > 0.3 else "需要补充材料",
+                "audit_remarks": "审核通过"
+                if random.random() > 0.3
+                else "需要补充材料",
                 "audit_time": leave_date + timedelta(hours=random.randint(1, 48)),
                 "course_id": selected_course.course_id,
                 "is_modified": "否",
-                "guarantee_student_id": random.choice(students).student_id if random.random() > 0.7 else None,
+                "guarantee_student_id": random.choice(students).student_id
+                if random.random() > 0.7
+                else None,
             }
 
             leave = Leave(**leave_data)
             session.add(leave)
             created_leaves.append(leave)
-            print(f"创建请假记录: {student.name} - {leave.leave_type} {leave.leave_days}天 (ID: {leave.leave_id})")
+            print(
+                f"创建请假记录: {student.student_name} - {leave.leave_type} {leave.leave_hours} (ID: {leave.leave_id})"
+            )
 
             leave_id_counter += 1
 

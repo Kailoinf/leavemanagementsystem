@@ -6,8 +6,7 @@ from pydantic import BaseModel, Field, field_validator
 class LeaveCreate(BaseModel):
     student_id: Optional[int] = None
     leave_date: Optional[Union[datetime, str]] = None
-    class_hours: str = Field(max_length=8, default=None)
-    leave_days: str = Field(max_length=8)
+    leave_hours: Optional[str] = Field(max_length=8, default=None)
     status: str = Field(max_length=8)
     leave_type: str = Field(max_length=8, default=None)
     remarks: str = Field(max_length=100, default=None)

@@ -17,7 +17,7 @@ class CourseService:
         items = CommonService.inject_relations(
             session,
             courses,
-            {"teacher_id": (Teacher, "teacher_id", "name", "teacher_name")},
+            {"teacher_id": (Teacher, "teacher_id", "teacher_name", "teacher_name")},
         )
 
         # 为每个课程添加选课人数
