@@ -5,24 +5,8 @@
     </view>
 
     <view class="login-form">
-      <!-- 角色选择 -->
-      <view class="form-item">
-        <text class="form-label">角色</text>
-        <picker
-          mode="selector"
-          range="{{roleOptions}}"
-          range-key="text"
-          value="{{selectedRoleIndex}}"
-          bindchange="onRoleChange"
-        >
-          <view class="picker">
-            {{roleOptions[selectedRoleIndex].text}}
-          </view>
-        </picker>
-      </view>
-
       <!-- 账号输入 -->
-      <view class="form-item">
+      <view class="form-group">
         <text class="form-label">账号</text>
         <input
           class="form-input"
@@ -33,7 +17,7 @@
       </view>
 
       <!-- 密码输入 -->
-      <view class="form-item">
+      <view class="form-group">
         <text class="form-label">密码</text>
         <input
           class="form-input"
@@ -42,6 +26,18 @@
           value="{{loginForm.password}}"
           bindinput="onPasswordInput"
         />
+      </view>
+
+      <!-- 记住密码 -->
+      <view class="form-group">
+        <label class="checkbox-container">
+          <checkbox
+            class="checkbox"
+            checked="{{rememberPassword}}"
+            bindchange="onRememberPasswordChange"
+          />
+          <text class="checkbox-label">记住密码</text>
+        </label>
       </view>
 
       <!-- 登录按钮 -->

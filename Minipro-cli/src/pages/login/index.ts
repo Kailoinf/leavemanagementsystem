@@ -2,7 +2,6 @@ import { defineComponent, ref } from '@vue-mini/core';
 import { BASE_URL } from '@/app';
 
 interface LoginFormData {
-  role: string;
   id: string;
   password: string;
 }
@@ -13,25 +12,71 @@ interface UserInfo {
   name: string;
 }
 
-defineComponent(() => {
+export default defineComponent(() => {
   const loginForm = ref<LoginFormData>({
-    role: 'student',
     id: '',
     password: ''
   });
 
   const loading = ref(false);
-  const roleOptions = [
-    { value: 'student', text: '学生' },
-    { value: 'teacher', text: '教师' },
-    { value: 'admin', text: '管理员' }
-  ];
+  const rememberPassword = ref(false);
 
-  const selectedRoleIndex = ref(0); // 默认选中第一个角色
+  // 检查是否已经登录
+  const checkAlreadyLoggedIn = () => {
+    const token = wx.getStorageSync('token');
+    const userInfo = wx.getStorageSync('userInfo');
+    
+    if (token && userInfo) {
+      // 已经登录，直接跳转到主页
+      wx.switchTab({
+        url: '/pages/home/index'
+      });
+      return true;
+    }
+    return false;
+  };
 
-  // 生成唯一token
-  const generateToken = () => {
-    return Date.now().toString(36) + Math.random().toString(36).substring(2);
+  // 加载保存的登录信息
+  const loadSavedCredentials = () => {
+    const savedId = wx.getStorageSync('savedUserId');
+    const savedPassword = wx.getStorageSync('savedPassword');
+    const savedRemember = wx.getStorageSync('rememberPassword');
+    
+    if (savedId) {
+      loginForm.value.id = savedId;
+    }
+    if (savedPassword && savedRemember) {
+      loginForm.value.password = savedPassword;
+      rememberPassword.value = true;
+    }
+  };
+
+  // 保存登录信息
+  const saveCredentials = () => {
+    if (rememberPassword.value) {
+      wx.setStorageSync('savedUserId', loginForm.value.id);
+      wx.setStorageSync('savedPassword', loginForm.value.password);
+      wx.setStorageSync('rememberPassword', true);
+    } else {
+      wx.removeStorageSync('savedUserId');
+      wx.removeStorageSync('savedPassword');
+      wx.removeStorageSync('rememberPassword');
+    }
+  };
+
+  // 页面加载时检查登录状态
+  const onLoad = () => {
+    if (checkAlreadyLoggedIn()) {
+      return;
+    }
+    loadSavedCredentials();
+  };
+
+  // 生成稳定token，基于用户ID和时间戳
+  const generateToken = (userId: string) => {
+    const timestamp = Date.now().toString();
+    const userHash = btoa(userId).replace(/[^a-zA-Z0-9]/g, '').substring(0, 8);
+    return `${userHash}_${timestamp}`;
   };
 
   // 登录请求
@@ -45,12 +90,12 @@ defineComponent(() => {
     }
 
     loading.value = true;
+    saveCredentials(); // 保存登录信息
 
     try {
-      const token = generateToken();
+      const token = generateToken(loginForm.value.id);
 
       const requestData = {
-        role: loginForm.value.role,
         id: parseInt(loginForm.value.id) || loginForm.value.id,
         password: loginForm.value.password,
         token: token
@@ -70,11 +115,11 @@ defineComponent(() => {
         success: (res) => {
           console.log('登录响应:', res);
           if (res.statusCode === 200 && res.data && typeof res.data === 'object') {
-            // 登录成功，保存token和用户信息
+            // 登录成功，从后端返回值中获取角色信息
             const response = res.data as any;
             const userInfo: UserInfo = {
               role: response.role || '',
-              id: response.id || '',
+              id: response.id || loginForm.value.id,
               name: response.name || ''
             };
 
@@ -86,10 +131,10 @@ defineComponent(() => {
               icon: 'success'
             });
 
-            // 延迟跳转到mine页面
+            // 延迟跳转到主页
             setTimeout(() => {
               wx.switchTab({
-                url: '/pages/mine/index'
+                url: '/pages/home/index'
               });
             }, 1500);
           } else {
@@ -121,13 +166,6 @@ defineComponent(() => {
     }
   };
 
-  // 处理角色选择
-  const onRoleChange = (e: any) => {
-    const index = e.detail.value;
-    selectedRoleIndex.value = index;
-    loginForm.value.role = roleOptions[index].value;
-  };
-
   // 处理账号输入
   const onIdInput = (e: any) => {
     loginForm.value.id = e.detail.value;
@@ -138,14 +176,19 @@ defineComponent(() => {
     loginForm.value.password = e.detail.value;
   };
 
+  // 处理记住密码切换
+  const onRememberPasswordChange = (e: any) => {
+    rememberPassword.value = e.detail.value;
+  };
+
   return {
     loginForm,
     loading,
-    roleOptions,
-    selectedRoleIndex,
+    rememberPassword,
     handleLogin,
-    onRoleChange,
     onIdInput,
-    onPasswordInput
+    onPasswordInput,
+    onRememberPasswordChange,
+    onLoad
   };
 });

@@ -30,7 +30,59 @@
     </view>
 
     <view class="actions">
+      <button class="change-password-btn" bindtap="showChangePasswordModal">修改密码</button>
       <button class="logout-btn" bindtap="handleLogout">退出登录</button>
+    </view>
+
+    <!-- 修改密码模态框 -->
+    <view wx:if="{{showChangePassword}}" class="modal-overlay" bindtap="hideChangePasswordModal">
+      <view class="modal-content" catchtap="">
+        <view class="modal-header">
+          <text class="modal-title">修改密码</text>
+          <view class="modal-close" bindtap="hideChangePasswordModal">×</view>
+        </view>
+        <view class="modal-body">
+          <view class="form-group">
+            <text class="form-label">原密码</text>
+            <input 
+              class="form-input" 
+              type="password" 
+              placeholder="请输入原密码" 
+              value="{{passwordForm.old_password}}" 
+              bindinput="onOldPasswordInput" 
+            />
+          </view>
+          <view class="form-group">
+            <text class="form-label">新密码</text>
+            <input 
+              class="form-input" 
+              type="password" 
+              placeholder="请输入新密码" 
+              value="{{passwordForm.new_password}}" 
+              bindinput="onNewPasswordInput" 
+            />
+          </view>
+          <view class="form-group">
+            <text class="form-label">确认新密码</text>
+            <input 
+              class="form-input" 
+              type="password" 
+              placeholder="请再次输入新密码" 
+              value="{{passwordForm.confirm_password}}" 
+              bindinput="onConfirmPasswordInput" 
+            />
+          </view>
+          <view wx:if="{{passwordError}}" class="error-message">
+            <text>{{passwordError}}</text>
+          </view>
+        </view>
+        <view class="modal-footer">
+          <button class="btn btn-secondary" bindtap="hideChangePasswordModal">取消</button>
+          <button class="btn btn-primary" bindtap="handleChangePassword" disabled="{{isChangingPassword}}">
+            {{isChangingPassword ? '修改中...' : '确认修改'}}
+          </button>
+        </view>
+      </view>
     </view>
   </view>
 </view>

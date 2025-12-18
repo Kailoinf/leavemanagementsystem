@@ -5,6 +5,8 @@
     "bgColor": "#ffffff",
     "homeIcon": "/images/home-light.png",
     "homeSelectedIcon": "/images/home-light-selected.png",
+    "scanIcon": "/images/mine-light.png",
+    "scanSelectedIcon": "/images/mine-light-selected.png",
     "mineIcon": "/images/mine-light.png",
     "mineSelectedIcon": "/images/mine-light-selected.png"
   },
@@ -14,6 +16,8 @@
     "bgColor": "#181818",
     "homeIcon": "/images/home-dark.png",
     "homeSelectedIcon": "/images/home-dark-selected.png",
+    "scanIcon": "/images/mine-dark.png",
+    "scanSelectedIcon": "/images/mine-dark-selected.png",
     "mineIcon": "/images/mine-dark.png",
     "mineSelectedIcon": "/images/mine-dark-selected.png"
   }

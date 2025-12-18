@@ -1,28 +1,33 @@
 <view class="container">
   <view class="content">
+    <!-- 根据角色显示不同的表头 -->
     <view class="table-header">
       <text class="header-cell">请假ID</text>
-      <text class="header-cell">学生ID</text>
       <text class="header-cell">请假类型</text>
-      <text class="header-cell">请假天数</text>
+      <text class="header-cell">请假课时</text>
       <text class="header-cell">请假时间</text>
       <text class="header-cell">状态</text>
-      <text class="header-cell">审核人ID</text>
-      <text class="header-cell">审核意见</text>
-      <text class="header-cell">备注</text>
+      <text wx:if="{{userInfo.role === 'reviewer' || userInfo.role === 'admin'}}" class="header-cell">学生ID</text>
+      <text wx:if="{{userInfo.role === 'reviewer' || userInfo.role === 'admin'}}" class="header-cell">操作</text>
     </view>
 
     <scroll-view scroll-y class="table-body" bindscrolltolower="loadMore">
       <view wx:for="{{leaves}}" wx:key="leave_id" class="table-row">
         <text class="cell">{{item.leave_id}}</text>
-        <text class="cell">{{item.student_id}}</text>
-        <text class="cell">{{item.leave_type}}</text>
-        <text class="cell">{{item.leave_days}}</text>
+        <text class="cell">{{item.leave_type || '-'}}</text>
+        <text class="cell">{{item.leave_hours || item.leave_days || '-'}}</text>
         <text class="cell">{{item.leave_date_formatted}}</text>
         <text class="cell status-{{item.status}}">{{item.status}}</text>
-        <text class="cell">{{item.reviewer_id}}</text>
-        <text class="cell">{{item.audit_remarks}}</text>
-        <text class="cell">{{item.remarks}}</text>
+        <text wx:if="{{userInfo.role === 'reviewer' || userInfo.role === 'admin'}}" class="cell">{{item.student_id}}</text>
+        <view wx:if="{{userInfo.role === 'reviewer' || userInfo.role === 'admin'}}" class="cell">
+          <view wx:if="{{item.status === '待审批'}}" class="action-buttons">
+            <button class="btn-approve" bindtap="approveLeave" data-id="{{item.leave_id}}">通过</button>
+            <button class="btn-reject" bindtap="rejectLeave" data-id="{{item.leave_id}}">拒绝</button>
+          </view>
+          <view wx:else class="action-text">
+            <text>{{item.status}}</text>
+          </view>
+        </view>
       </view>
 
       <view wx:if="{{loading}}" class="loading">
@@ -33,5 +38,67 @@
         <text>暂无数据</text>
       </view>
     </scroll-view>
+  </view>
+
+  <!-- 创建请假条按钮 - 只有学生角色显示 -->
+  <view wx:if="{{userInfo.role === 'student'}}" class="create-btn" bindtap="openCreateModal">
+    <text class="create-btn-text">+</text>
+  </view>
+
+  <!-- 创建请假条模态框 -->
+  <view wx:if="{{showCreateModal}}" class="modal-overlay" bindtap="closeCreateModal">
+    <view class="modal-content" catchtap="">
+      <view class="modal-header">
+        <text class="modal-title">创建请假条</text>
+        <view class="modal-close" bindtap="closeCreateModal">×</view>
+      </view>
+      <view class="modal-body">
+        <view class="form-group">
+          <text class="form-label">学生ID</text>
+          <input class="form-input" type="number" placeholder="请输入学生ID" value="{{leaveForm.student_id}}" bindinput="onStudentIdInput" />
+        </view>
+        <view class="form-group">
+          <text class="form-label">请假日期</text>
+          <picker mode="date" value="{{leaveForm.leave_date}}" bindchange="onDateChange">
+            <view class="form-picker">
+              <text class="{{leaveForm.leave_date ? '' : 'form-picker-placeholder'}}">
+                {{leaveForm.leave_date || '请选择请假日期'}}
+              </text>
+            </view>
+          </picker>
+        </view>
+        <view class="form-group">
+          <text class="form-label">请假课时</text>
+          <input class="form-input" type="text" placeholder="请输入请假课时" value="{{leaveForm.leave_hours}}" bindinput="onLeaveHoursInput" />
+        </view>
+        <view class="form-group">
+          <text class="form-label">请假类型</text>
+          <input class="form-input" type="text" placeholder="请输入请假类型（可选）" value="{{leaveForm.leave_type}}" bindinput="onLeaveTypeInput" />
+        </view>
+        <view class="form-group">
+          <text class="form-label">课程</text>
+          <picker range="{{courseOptions}}" range-key="label" value="{{selectedCourseIndex}}" bindchange="onCourseChange">
+            <view class="form-picker">
+              <text class="{{selectedCourseIndex >= 0 ? '' : 'form-select-placeholder'}}">
+                {{selectedCourseIndex >= 0 ? courseOptions[selectedCourseIndex].label : '请选择课程（可选）'}}
+              </text>
+            </view>
+          </picker>
+        </view>
+        <view class="form-group">
+          <text class="form-label">备注</text>
+          <input class="form-input" type="text" placeholder="请输入备注（可选）" value="{{leaveForm.remarks}}" bindinput="onRemarksInput" />
+        </view>
+        <view wx:if="{{createError}}" class="error-message">
+          <text>{{createError}}</text>
+        </view>
+      </view>
+      <view class="modal-footer">
+        <button class="btn btn-secondary" bindtap="closeCreateModal">取消</button>
+        <button class="btn btn-primary" bindtap="handleCreateLeave" disabled="{{isCreating}}">
+          {{isCreating ? '创建中...' : '创建'}}
+        </button>
+      </view>
+    </view>
   </view>
 </view>

@@ -58,10 +58,12 @@ export default defineComponent(() => {
       title: '加载中...',
     });
 
+    const token = wx.getStorageSync('token');
     wx.request({
       url: BASE_URL + '/students',
       method: 'GET',
       data: {
+        token,
         page: page.value,
         page_size: pageSize
       },

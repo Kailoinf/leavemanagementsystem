@@ -1,32 +1,13 @@
 <view class="home">
   <view class="data-section">
     <view class="data-grid">
-      <view class="data-item clickable" bindtap="goToStudents">
-        <text class="data-label">学生</text>
-        <text class="data-number">{{studentCount}}</text>
-      </view>
-
       <view class="data-item clickable" bindtap="goToLeaves">
         <text class="data-label">请假条</text>
         <text class="data-number">{{leaveCount}}</text>
       </view>
-
-      <view class="data-item clickable" bindtap="goToReviewers">
-        <text class="data-label">审核员</text>
-        <text class="data-number">{{reviewerCount}}</text>
-      </view>
-      <view class="data-item clickable" bindtap="goToTeachers">
-        <text class="data-label">教师</text>
-        <text class="data-number">{{teacherCount}}</text>
-      </view>
-      <view class="data-item clickable" bindtap="goToCourses">
-        <text class="data-label">课程</text>
-        <text class="data-number">{{courseCount}}</text>
-      </view>
     </view>
 
-    <button class="refresh-btn" bindtap="getAllData">刷新数据</button>
-
-    <button class="refresh-btn" bindtap="scanCode">扫一扫测试</button>
+    <button class="refresh-btn" bindtap="getLeaveCount">刷新数据</button>
+    <button class="scan-btn" bindtap="scanCode">扫一扫</button>
   </view>
 </view>
