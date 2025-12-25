@@ -1,7 +1,7 @@
 from sqlmodel import Session, select, func
 from fastapi import Depends, HTTPException, Query
 
-from app.models import Student, Reviewer
+from app.models import Student, Reviewer, School
 from app.schemas import StudentCreate
 from app.api.deps import check_login
 from app.services.common import CommonService
@@ -55,6 +55,12 @@ class StudentService:
                     "reviewer_id",
                     "reviewer_name",
                     "reviewer_name",
+                ),
+                "school_id": (
+                    School,
+                    "school_id",
+                    "school_name",
+                    "school_name",
                 )
             },
         )
@@ -104,10 +110,7 @@ class StudentService:
         if obj["role"] not in ["reviewer", "admin"]:
             raise HTTPException(status_code=403, detail="Permission denied")
 
-        student = Student(
-            **student_data.model_dump(exclude={"guarantee_permission"}),
-            guarantee_permission=student_data.guarantee_permission,
-        )
+        student = Student(**student_data.model_dump())
         if student.password:
             student.password = hash_password(student.password)
         session.add(student)

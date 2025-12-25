@@ -14,7 +14,7 @@ from sqlmodel import Session, select
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app.database.connection import engine
-from app.models import Admin, Reviewer, Student, Teacher, Course, Leave, StudentCourse
+from app.models import Admin, Reviewer, Student, Teacher, Course, Leave, StudentCourse, School, Role
 from app.utils.password import hash_password
 from sqlmodel import SQLModel
 
@@ -78,6 +78,7 @@ def create_test_reviewers(session: Session):
         "涛",
     ]
 
+    # 创建学校和角色数据
     schools = [
         "学生处",
         "教务处",
@@ -88,31 +89,48 @@ def create_test_reviewers(session: Session):
         "数学系",
         "物理学院",
     ]
-    roles = ["处长", "主任", "辅导员", "书记", "副院长", "科长", "组长", "主管"]
+    roles_list = ["处长", "主任", "辅导员", "书记", "副院长", "科长", "组长", "主管"]
+
+    # 先创建 School 和 Role 记录
+    school_map = {}
+    for idx, school_name in enumerate(schools, start=1):
+        school = School(school_id=idx, school_name=school_name)
+        session.add(school)
+        school_map[school_name] = idx
+        print(f"创建学校/院系: {school_name} (ID: {idx})")
+
+    role_map = {}
+    for idx, role_name in enumerate(roles_list, start=1):
+        role = Role(role_id=idx, role_name=role_name)
+        session.add(role)
+        role_map[role_name] = idx
+        print(f"创建角色: {role_name} (ID: {idx})")
+
+    session.commit()
 
     created_reviewers = []
-    for i in range(16):  # 创建8个审核员
+    for i in range(16):  # 创建16个审核员
         reviewer_id = 1001 + i
         name = random.choice(surnames) + random.choice(names)
-        school = random.choice(schools)
-        role = random.choice(roles)
+        school_name = random.choice(schools)
+        role_name = random.choice(roles_list)
 
         reviewer = Reviewer(
             reviewer_id=reviewer_id,
             reviewer_name=name,
-            school=school,
-            role=role,
+            school_id=school_map[school_name],
+            role_id=role_map[role_name],
             password=hash_password("1"),
         )
 
         session.add(reviewer)
         created_reviewers.append(reviewer)
         print(
-            f"创建审核员: {reviewer.reviewer_name} (ID: {reviewer.reviewer_id}, {school}{role}, 密码: 1)"
+            f"创建审核员: {reviewer.reviewer_name} (ID: {reviewer.reviewer_id}, {school_name}{role_name}, 密码: 1)"
         )
 
     session.commit()
-    return created_reviewers
+    return created_reviewers, school_map
 
 
 def create_test_teachers(session: Session):
@@ -187,7 +205,7 @@ def create_test_courses(session: Session, teachers):
     return created_courses
 
 
-def create_test_students(session: Session, reviewers):
+def create_test_students(session: Session, reviewers, school_map):
     """创建测试学生数据"""
     schools = [
         "计算机系",
@@ -201,11 +219,14 @@ def create_test_students(session: Session, reviewers):
 
     created_students = []
     for i in range(1, 151):  # 创建150个学生
+        school_name = random.choice(schools)
+        school_id = school_map.get(school_name, 1)  # 默认使用第一个学校
+
         student_data = {
             "student_id": 4000 + i,
             "student_name": f"学生{i:03d}",
             "password": "1",
-            "school": random.choice(schools),
+            "school_id": school_id,
             "reviewer_id": random.choice(reviewers).reviewer_id,  # 随机分配审核员
             "guarantee_permission": datetime.now()
             + timedelta(days=random.randint(1, 365)),
@@ -298,7 +319,7 @@ def create_test_leaves(session: Session, students, courses):
                 else "需要补充材料",
                 "audit_time": leave_date + timedelta(hours=random.randint(1, 48)),
                 "course_id": selected_course.course_id,
-                "is_modified": "否",
+                "is_modified": False,  # 改为布尔类型
                 "guarantee_student_id": random.choice(students).student_id
                 if random.random() > 0.7
                 else None,
@@ -328,6 +349,8 @@ def clear_all_data(session: Session):
     session.exec(Student.__table__.delete())
     session.exec(Teacher.__table__.delete())
     session.exec(Reviewer.__table__.delete())
+    session.exec(Role.__table__.delete())
+    session.exec(School.__table__.delete())
     session.exec(Admin.__table__.delete())
 
     session.commit()
@@ -351,8 +374,8 @@ def main():
         print("\n1. 创建管理员...")
         admin = create_admin(session)
 
-        print("\n2. 创建审核员...")
-        reviewers = create_test_reviewers(session)
+        print("\n2. 创建学校、角色和审核员...")
+        reviewers, school_map = create_test_reviewers(session)
 
         print("\n3. 创建教师...")
         teachers = create_test_teachers(session)
@@ -361,7 +384,7 @@ def main():
         courses = create_test_courses(session, teachers)
 
         print("\n5. 创建学生...")
-        students = create_test_students(session, reviewers)
+        students = create_test_students(session, reviewers, school_map)
 
         print("\n6. 创建学生选课记录...")
         enrollments = create_student_course_enrollments(session, students, courses)
@@ -371,10 +394,12 @@ def main():
 
         print(f"\n测试数据创建完成!")
         print(f"- 管理员: 1 个 (ID: 8001, 密码: 1)")
-        print(f"- 审核员: {len(reviewers)} 个 (ID: 1001-1008, 密码: 1)")
-        print(f"- 教师: {len(teachers)} 个 (ID: 2001-2010, 密码: 1)")
+        print(f"- 学校/院系: {len(school_map)} 个")
+        print(f"- 角色: 8 个")
+        print(f"- 审核员: {len(reviewers)} 个 (ID: 1001-1016, 密码: 1)")
+        print(f"- 教师: {len(teachers)} 个 (ID: 2001-2015, 密码: 1)")
         print(f"- 课程: {len(courses)} 门")
-        print(f"- 学生: {len(students)} 个 (ID: 4001-4151, 密码: 1)")
+        print(f"- 学生: {len(students)} 个 (ID: 4001-4150, 密码: 1)")
         print(f"- 选课记录: {len(enrollments)} 条")
         print(f"- 请假记录: {len(leaves)} 条")
 

@@ -332,8 +332,8 @@ class LeaveService:
                     detail="Student has not enrolled in this course"
                 )
 
-        # 标记为已修改
-        update_data["is_modified"] = "是"
+        # 标记为已修改（改为布尔类型）
+        update_data["is_modified"] = True
 
         # 应用更新
         for key, value in update_data.items():

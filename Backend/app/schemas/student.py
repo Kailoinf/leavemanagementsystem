@@ -1,15 +1,15 @@
 from datetime import datetime
-from typing import Union
+from typing import Union, Optional
 from pydantic import BaseModel, Field, field_validator
 
 
 class StudentCreate(BaseModel):
     student_id: int
-    name: str = Field(max_length=8)
-    password: str = None
-    school: str = Field(max_length=8, default=None)
-    reviewer_id: int = None
-    guarantee_permission: Union[datetime, str]
+    student_name: str = Field(max_length=8)  # 修复字段名匹配模型
+    password: Optional[str] = None
+    school_id: Optional[int] = None  # 改为 school_id 外键
+    reviewer_id: Optional[int] = None
+    guarantee_permission: Optional[Union[datetime, str]] = None
 
     @field_validator("guarantee_permission", mode="before")
     @classmethod

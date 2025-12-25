@@ -1,7 +1,7 @@
 from sqlmodel import Session, select, func
 from fastapi import Depends, Query, HTTPException
 
-from app.models import Reviewer
+from app.models import Reviewer, School, Role
 from app.schemas import ReviewerCreate
 from app.api.deps import check_login
 from app.services.common import CommonService
@@ -19,7 +19,28 @@ class ReviewerService:
         reviewers, total, total_pages = CommonService.paginate_query(
             session, Reviewer, page, page_size
         )
-        return reviewers, total, total_pages
+
+        # 注入关联数据
+        items = CommonService.inject_relations(
+            session,
+            reviewers,
+            {
+                "school_id": (
+                    School,
+                    "school_id",
+                    "school_name",
+                    "school_name",
+                ),
+                "role_id": (
+                    Role,
+                    "role_id",
+                    "role_name",
+                    "role_name",
+                )
+            },
+        )
+
+        return items, total, total_pages
 
     @staticmethod
     def get_reviewers_count(session: Session):
