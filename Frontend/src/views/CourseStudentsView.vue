@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import GenericList from '../components/GenericList.vue'
 import { getStatusBadgeClass } from '../utils/formatters'
+import http from '../utils/http'
 
 // 获取路由参数
 const router = useRouter()
@@ -25,13 +26,7 @@ const fetchCourseStudents = async () => {
     loading.value = true
     error.value = ''
 
-    const token = localStorage.getItem('token')
-    const response = await fetch(`/api/v1/student-courses/course/${courseId}?token=${token}`)
-    if (!response.ok) {
-      throw new Error(`获取数据失败: ${response.statusText}`)
-    }
-
-    const data = await response.json()
+    const data = await http.get(`/student-courses/course/${courseId}`) as any[]
     students.value = data
 
     // 从第一个学生的记录中获取课程名称

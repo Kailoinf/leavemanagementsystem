@@ -38,40 +38,24 @@ const onPasswordChanged = () => {
 
 <template>
   <div>
-    <GenericList
-      endpoint="/students"
-      title="学生列表"
-      :columns="[
-        { key: 'student_id', label: '学号' },
-        { key: 'student_name', label: '学生姓名' },
-        { key: 'school', label: '院系' },
-        { key: 'guarantee_permission', label: '担保权限到期时间', formatter: formatDate },
-        { key: 'reviewer_id', label: '审核人ID' },
-        { key: 'reviewer_name', label: '审核人姓名' }
-      ]"
-      item-label="名学生"
-      :show-actions="isAdmin"
-    >
+    <GenericList endpoint="/students" title="学生列表" :columns="[
+      { key: 'student_id', label: '学号' },
+      { key: 'student_name', label: '学生姓名' },
+      { key: 'school_name', label: '院系' },
+      { key: 'guarantee_permission', label: '担保权限到期时间', formatter: formatDate },
+      { key: 'reviewer_id', label: '审核人ID' },
+      { key: 'reviewer_name', label: '审核人姓名' }
+    ]" item-label="名学生" :show-actions="isAdmin">
       <template #actions="{ item }">
-        <button
-          v-if="isAdmin"
-          @click="openChangePassword(item)"
-          class="btn btn-sm btn-outline"
-          title="修改密码"
-        >
+        <button v-if="isAdmin" @click="openChangePassword(item)" class="btn btn-sm btn-outline" title="修改密码">
           修改密码
         </button>
       </template>
     </GenericList>
 
     <!-- 修改密码模态框 -->
-    <ChangePasswordModal
-      :show="showPasswordModal"
-      :user-id="selectedUser?.id"
-      :user-name="selectedUser?.name"
-      @close="closePasswordModal"
-      @success="onPasswordChanged"
-    />
+    <ChangePasswordModal :show="showPasswordModal" :user-id="selectedUser?.id" :user-name="selectedUser?.name"
+      @close="closePasswordModal" @success="onPasswordChanged" />
   </div>
 </template>
 

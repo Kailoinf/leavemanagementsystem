@@ -37,38 +37,22 @@ const onPasswordChanged = () => {
 
 <template>
   <div>
-    <GenericList
-      endpoint="/reviewers"
-      title="审核员列表"
-      :columns="[
-        { key: 'reviewer_id', label: '审核员ID' },
-        { key: 'reviewer_name', label: '姓名' },
-        { key: 'role', label: '职务' },
-        { key: 'school', label: '部门' }
-      ]"
-      item-label="名审核员"
-      :show-actions="isAdmin"
-    >
+    <GenericList endpoint="/reviewers" title="审核员列表" :columns="[
+      { key: 'reviewer_id', label: '审核员ID' },
+      { key: 'reviewer_name', label: '姓名' },
+      { key: 'role_name', label: '职务' },
+      { key: 'school_name', label: '院系' }
+    ]" item-label="名审核员" :show-actions="isAdmin">
       <template #actions="{ item }">
-        <button
-          v-if="isAdmin"
-          @click="openChangePassword(item)"
-          class="btn btn-sm btn-outline"
-          title="修改密码"
-        >
+        <button v-if="isAdmin" @click="openChangePassword(item)" class="btn btn-sm btn-outline" title="修改密码">
           修改密码
         </button>
       </template>
     </GenericList>
 
     <!-- 修改密码模态框 -->
-    <ChangePasswordModal
-      :show="showPasswordModal"
-      :user-id="selectedUser?.id"
-      :user-name="selectedUser?.name"
-      @close="closePasswordModal"
-      @success="onPasswordChanged"
-    />
+    <ChangePasswordModal :show="showPasswordModal" :user-id="selectedUser?.id" :user-name="selectedUser?.name"
+      @close="closePasswordModal" @success="onPasswordChanged" />
   </div>
 </template>
 

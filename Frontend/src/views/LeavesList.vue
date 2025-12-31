@@ -1,15 +1,11 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import GenericList from '../components/GenericList.vue'
-import { formatDate, getStatusBadgeClass } from '../utils/formatters'
-import { exportToExcel } from '../utils/excelExporter'
-import { createLeave, getAllCourses, getStudentCourses, editLeave, auditLeave } from '../api'
+import { formatDate } from '../utils/formatters'
+import { getAllCourses, getStudentCourses, editLeave, auditLeave } from '../api'
 import type { Leave, LeaveCreate, Course, StudentCourseResponse } from '../types'
 
-// 创建请假条相关状态
-const showCreateModal = ref(false)
-const isCreating = ref(false)
-const createError = ref('')
+// 课程列表
 const courses = ref<Course[]>([])
 const coursesLoading = ref(false)
 
@@ -33,9 +29,9 @@ const auditForm = reactive({
 const currentUserId = parseInt(localStorage.getItem('id') || '0')
 const currentUserRole = localStorage.getItem('role') || ''
 
-// 创建请假条表单数据
+// 创建请假条表单数据(用于编辑)
 const leaveForm = reactive<LeaveCreate>({
-  student_id: currentUserId, // 默认使用当前用户的ID
+  student_id: currentUserId,
   leave_date: '',
   leave_hours: '',
   status: '待审批',
@@ -59,8 +55,8 @@ const fetchCourses = async () => {
       courses.value = studentCoursesResponse.map((sc: StudentCourseResponse) => ({
         course_id: sc.course_id,
         course_name: sc.course_name || `课程 ${sc.course_id}`,
-        class_hours: 0, // 从StudentCourseResponse中无法直接获取class_hours
-        teacher_id: 0, // 从StudentCourseResponse中无法直接获取teacher_id
+        class_hours: 0,
+        teacher_id: 0,
         teacher_name: sc.teacher_name || '未知教师'
       }))
 
@@ -79,34 +75,6 @@ const fetchCourses = async () => {
   }
 }
 
-// 打开创建弹窗
-const openCreateModal = async () => {
-  showCreateModal.value = true
-  createError.value = ''
-
-  // 先获取课程数据
-  await fetchCourses()
-
-  // 重置表单，学生ID根据角色设置
-  Object.assign(leaveForm, {
-    student_id: currentUserRole === 'student' ? currentUserId : 0, // 学生角色使用自己的ID
-    leave_date: '',
-    leave_hours: '',
-    status: '待审批',
-    leave_type: '',
-    remarks: '',
-    materials: '',
-    course_id: 0,
-    teacher_id: 0
-  })
-}
-
-// 关闭创建弹窗
-const closeCreateModal = () => {
-  showCreateModal.value = false
-  createError.value = ''
-}
-
 // 处理课程选择变化
 const handleCourseChange = () => {
   // 重置教师ID，会根据选择的课程自动设置
@@ -120,81 +88,6 @@ const handleCourseChange = () => {
       // 设置教师ID
       leaveForm.teacher_id = selectedCourse.teacher_id
     }
-  }
-}
-
-// 创建请假条
-const handleCreateLeave = async () => {
-  try {
-    isCreating.value = true
-    createError.value = ''
-
-    // 验证必填字段
-    if (!leaveForm.student_id || !leaveForm.leave_date || !leaveForm.leave_hours) {
-      createError.value = '请填写必填字段：学生ID、请假日期、请假课时'
-      return
-    }
-
-    // 格式化数据以符合 API 要求
-    const formattedData: any = {
-      student_id: parseInt(leaveForm.student_id.toString()),
-      leave_date: leaveForm.leave_date, // 直接使用日期字符串，后端会处理时间
-      leave_hours: leaveForm.leave_hours ? leaveForm.leave_hours.toString() : '',
-      status: leaveForm.status || '待审批'
-    }
-
-    // 如果选择了课程，添加课程ID和教师ID
-    if (leaveForm.course_id && leaveForm.course_id > 0) {
-      formattedData.course_id = parseInt(leaveForm.course_id.toString())
-
-      // 查找对应的教师ID
-      const selectedCourse = courses.value.find(c => c.course_id === leaveForm.course_id)
-      if (selectedCourse) {
-        formattedData.teacher_id = selectedCourse.teacher_id
-      }
-    }
-
-    // 只添加有值的可选字段
-    if (leaveForm.leave_type) {
-      formattedData.leave_type = leaveForm.leave_type.slice(0, 8) // 限制长度为8
-    }
-    if (leaveForm.remarks) {
-      formattedData.remarks = leaveForm.remarks.slice(0, 100) // 限制长度为100
-    }
-    if (leaveForm.materials) {
-      formattedData.materials = leaveForm.materials.slice(0, 100) // 限制长度为100
-    }
-
-    console.log('提交请假条数据:', formattedData)
-
-    // 调用创建API
-    await createLeave(formattedData)
-
-    // 创建成功，关闭弹窗并刷新列表
-    closeCreateModal()
-    refreshData()
-
-  } catch (error: any) {
-    console.error('创建请假条失败:', error)
-    console.error('错误详情:', error.response?.data)
-
-    // 尝试提取详细的错误信息
-    let errorMessage = '创建失败，请重试'
-    if (error.response?.data) {
-      const errorData = error.response.data
-      if (errorData.detail && Array.isArray(errorData.detail)) {
-        // OpenAPI 验证错误格式
-        errorMessage = errorData.detail.map((item: any) => `${item.loc?.join('.')}: ${item.msg}`).join('; ')
-      } else if (errorData.message) {
-        errorMessage = errorData.message
-      } else if (typeof errorData === 'string') {
-        errorMessage = errorData
-      }
-    }
-
-    createError.value = errorMessage
-  } finally {
-    isCreating.value = false
   }
 }
 
@@ -398,121 +291,21 @@ const handleAuditLeave = async () => {
   }
 }
 
-// 导出相关状态
-const isExporting = ref(false)
-
-// 导出CSV
-const handleExportCSV = async () => {
-  try {
-    isExporting.value = true
-
-    // 获取所有数据，不分页
-    const token = localStorage.getItem('token')
-    if (!token) {
-      console.error('未找到 token，无法导出')
-      return
-    }
-
-    console.log('正在获取所有数据用于导出...')
-
-    let allData: any[] = []
-    let currentPage = 1
-    let hasMoreData = true
-
-    // 循环获取所有页面的数据
-    while (hasMoreData) {
-      const params = new URLSearchParams({
-        token,
-        page: currentPage.toString(),
-        page_size: '100' // 设置为最大值100
-      })
-
-      const response = await fetch(`/api/v1/leaves?${params}`)
-      if (!response.ok) {
-        throw new Error(`导出失败: ${response.statusText}`)
-      }
-
-      const result = await response.json()
-      const currentPageData = result.items || []
-
-      // 将当前页数据添加到总数据中
-      allData = allData.concat(currentPageData)
-
-      console.log(`已获取第 ${currentPage} 页数据，本页 ${currentPageData.length} 条，累计 ${allData.length} 条`)
-
-      // 检查是否还有下一页
-      if (currentPageData.length < 100) {
-        hasMoreData = false
-      } else {
-        currentPage++
-      }
-    }
-
-    if (allData.length === 0) {
-      alert('没有数据可以导出')
-      return
-    }
-
-    // 定义 CSV 列名和对应的数据键
-    const headers = [
-      '请假ID',
-      '学生ID',
-      '学生名称',
-      '请假类型',
-      '请假课时',
-      '请假时间',
-      '备注',
-      '状态',
-      '审核人ID',
-      '审核人姓名',
-      '审核意见',
-      '审核时间',
-      '材料',
-      '课程ID',
-      '教师ID'
-    ]
-
-    // 转换数据格式
-    const csvData = allData.map((item: any) => ({
-      '请假ID': item.leave_id,
-      '学生ID': item.student_id,
-      '学生名称': item.student_name || '',
-      '请假类型': item.leave_type || '',
-      '请假课时': item.leave_hours || '',
-      '请假时间': item.leave_date ? new Date(item.leave_date).toLocaleString('zh-CN') : '',
-      '备注': item.remarks || '',
-      '状态': item.status || '',
-      '审核人ID': item.reviewer_id || '',
-      '审核人姓名': item.reviewer_name || '',
-      '审核意见': item.audit_remarks || '',
-      '审核时间': item.audit_time ? new Date(item.audit_time).toLocaleString('zh-CN') : '',
-      '材料': item.materials || '',
-      '课程ID': item.course_id || '',
-      '教师ID': item.teacher_id || ''
-    }))
-
-    // 导出为 Excel
-    exportToExcel(csvData, '请假条数据', headers)
-
-  } catch (error: any) {
-    console.error('导出失败:', error)
-    alert(`导出失败: ${error.message || '未知错误'}`)
-  } finally {
-    isExporting.value = false
-  }
-}
-
 // 判断是否可以编辑（学生只能编辑自己的请假条）
 const canEdit = (leave: Leave): boolean => {
   return currentUserRole === 'student' && leave.student_id === currentUserId && leave.status === '待审批'
 }
 
-// 判断是否可以审核（审核员/教师可以审核待审批的请假条）
+// 判断是否可以审核（审核员/管理员可以审核待审批的请假条）
 const canAudit = (leave: Leave): boolean => {
-  return (currentUserRole === 'reviewer' || currentUserRole === 'teacher') && leave.status === '待审批'
+  if (currentUserRole === 'admin')
+    return true
+  else if (currentUserRole === 'reviewer' && leave.status === '待审批')
+    return true
+  else return false
 }
 
-// 刷新数据的函数，用于在创建/编辑/审核后刷新列表
+// 刷新数据的函数，用于在编辑/审核后刷新列表
 const refreshData = () => {
   // GenericList组件会自动处理刷新，这里可以添加其他逻辑
   console.log('数据已刷新')
@@ -522,25 +315,17 @@ const refreshData = () => {
 <template>
   <div class="leaves-page">
     <!-- 自定义页面头部，包含创建按钮 -->
-    <div class="page-header">
+    <!-- <div class="page-header">
       <h1 class="page-title">请假条列表</h1>
       <div class="header-buttons">
-        <button @click="openCreateModal" class="btn btn-primary">
-          创建请假条
-        </button>
+        
         <button @click="handleExportCSV" class="btn btn-export" :disabled="isExporting">
           {{ isExporting ? '导出中...' : '导出Excel' }}
         </button>
       </div>
-    </div>
+    </div> -->
 
-    <GenericList
-      endpoint="/leaves"
-      title=""
-      item-label="张请假条"
-      :show-actions="true"
-      :hide-export="true"
-      :hide-back-button="true"
+    <GenericList endpoint="/leaves" title="请假条列表" item-label="张请假条" :show-actions="true" :show-create-leaves="true"
       :columns="[
         { key: 'leave_id', label: '请假ID' },
         { key: 'student_name', label: '学生名称' },
@@ -558,8 +343,7 @@ const refreshData = () => {
         },
         { key: 'reviewer_name', label: '审核人姓名' },
         { key: 'audit_remarks', label: '审核意见' }
-      ]"
-    >
+      ]">
       <template #actions="{ item }">
         <div class="action-buttons">
           <button v-if="canEdit(item)" @click="openEditModal(item)" class="btn btn-warning btn-sm">
@@ -571,81 +355,6 @@ const refreshData = () => {
         </div>
       </template>
     </GenericList>
-
-    <!-- 创建请假条弹窗 -->
-    <div v-if="showCreateModal" class="modal-overlay" @click.self="closeCreateModal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>创建请假条</h3>
-        </div>
-
-        <form @submit.prevent="handleCreateLeave" class="modal-form">
-          <div class="form-row-two">
-            <div class="form-group">
-              <label for="student_id">
-                学生ID
-              </label>
-              <input type="number" id="student_id" v-model="leaveForm.student_id"
-                :readonly="currentUserRole === 'student'" :disabled="currentUserRole === 'student'"
-                :class="{ 'readonly-input': currentUserRole === 'student' }" required
-                :placeholder="currentUserRole === 'student' ? `当前用户ID: ${currentUserId}` : '请输入学生ID'" min="1" />
-            </div>
-            <div class="form-group">
-              <label for="leave_date">请假日期 *</label>
-              <input type="date" id="leave_date" v-model="leaveForm.leave_date" required />
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="course">课程</label>
-            <select id="course" v-model="leaveForm.course_id" @change="handleCourseChange">
-              <option value="0">请选择课程</option>
-              <option v-if="coursesLoading" value="">加载中...</option>
-              <option v-for="course in courses" :key="course.course_id" :value="course.course_id">
-                {{ course.course_name }} ({{ course.teacher_name }})
-              </option>
-            </select>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="leave_hours">请假课时 *</label>
-              <input type="number" id="leave_hours" v-model="leaveForm.leave_hours" required placeholder="数字" />
-            </div>
-            <div class="form-group">
-              <label for="leave_type">请假类型</label>
-              <select id="leave_type" v-model="leaveForm.leave_type">
-                <option value="">请选择请假类型</option>
-                <option value="病假">病假</option>
-                <option value="事假">事假</option>
-                <option value="公假">公假</option>
-                <option value="其他">其他</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="remarks">备注</label>
-            <textarea id="remarks" v-model="leaveForm.remarks" rows="3" placeholder="请输入请假事由等备注信息"
-              maxlength="100"></textarea>
-          </div>
-
-          <!-- 错误信息 -->
-          <div v-if="createError" class="error-message">
-            {{ createError }}
-          </div>
-
-          <div class="modal-footer">
-            <button type="button" @click="closeCreateModal" class="btn btn-secondary">
-              取消
-            </button>
-            <button type="submit" class="btn btn-primary" :disabled="isCreating">
-              {{ isCreating ? '创建中...' : '创建请假条' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
 
     <!-- 编辑请假条弹窗 -->
     <div v-if="showEditModal" class="modal-overlay" @click.self="closeEditModal">
@@ -763,51 +472,6 @@ const refreshData = () => {
 </template>
 
 <style scoped>
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-xl);
-  padding-bottom: var(--spacing);
-  border-bottom: 1px solid var(--border-light);
-}
-
-.page-title {
-  font-size: var(--text-3xl);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.header-buttons {
-  display: flex;
-  gap: var(--spacing);
-}
-
-.btn-export {
-  background-color: #10b981;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition);
-}
-
-.btn-export:hover {
-  background-color: #059669;
-  color: white;
-}
-
-.btn-export:disabled {
-  background-color: #9ca3af;
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-
 /* 弹窗样式 */
 .modal-overlay {
   position: fixed;
@@ -849,37 +513,10 @@ const refreshData = () => {
   margin: 0;
 }
 
-.close-button {
-  background: none;
-  border: none;
-  font-size: var(--text-2xl);
-  color: var(--text-tertiary);
-  cursor: pointer;
-  padding: 0;
-  width: 2rem;
-  height: 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius);
-  transition: all var(--transition);
-}
-
-.close-button:hover {
-  background-color: var(--gray-100);
-  color: var(--text-primary);
-}
-
 .modal-form {
   padding: var(--spacing-lg);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing);
-}
-
-.form-row-two {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
   gap: var(--spacing);
 }
 
@@ -958,11 +595,6 @@ const refreshData = () => {
   cursor: not-allowed;
 }
 
-.form-group textarea {
-  resize: vertical;
-  min-height: 80px;
-}
-
 .error-message {
   background-color: var(--error-light);
   color: var(--error);
@@ -973,36 +605,67 @@ const refreshData = () => {
   font-weight: 500;
 }
 
-
-.btn-export {
-  background-color: #10b981;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition);
-}
-
-.btn-export:hover {
-  background-color: #059669;
-  color: white;
-}
-
-.btn-export:disabled {
-  background-color: #9ca3af;
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
 .modal-footer {
   display: flex;
   justify-content: flex-end;
   gap: var(--spacing);
   padding-top: 0.75rem;
   border-top: 1px solid var(--border-light);
+}
+
+/* 操作按钮样式 */
+.action-buttons {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: var(--text-sm);
+}
+
+.btn-warning {
+  background-color: #f59e0b;
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btn-warning:hover {
+  background-color: #d97706;
+}
+
+.btn-primary {
+  background-color: var(--primary-600);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-700);
+}
+
+.btn-secondary {
+  background-color: var(--gray-100);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-medium);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  font-weight: 500;
+  transition: all var(--transition);
+}
+
+.btn-secondary:hover {
+  background-color: var(--gray-200);
+  color: var(--text-primary);
+  border-color: var(--border-dark);
 }
 
 /* 响应式设计 */
@@ -1013,25 +676,6 @@ const refreshData = () => {
 }
 
 @media (max-width: 768px) {
-  .leaves-page {
-    padding: var(--spacing) 0;
-  }
-
-  .page-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--spacing);
-    margin-bottom: var(--spacing-lg);
-  }
-
-  .header-buttons {
-    justify-content: center;
-  }
-
-  .form-row-three {
-    grid-template-columns: 1fr;
-  }
-
   .form-row {
     grid-template-columns: 1fr;
   }
@@ -1049,11 +693,12 @@ const refreshData = () => {
     padding: var(--spacing);
   }
 
-  .data-table th,
-  .data-table td {
-    padding: 0.75rem 0.5rem;
-    font-size: var(--text-xs);
+  .modal-footer {
+    flex-direction: column;
+  }
+
+  .modal-footer button {
+    width: 100%;
   }
 }
-
 </style>

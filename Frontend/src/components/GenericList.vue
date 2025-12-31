@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { usePagedData } from '../composables/usePagedData'
 import { useNavigation } from '../composables/useNavigation'
 import { exportToExcel } from '../utils/excelExporter'
+import http from '../utils/http'
 import PaginationControls from './PaginationControls.vue'
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
   icon?: string
   itemLabel: string
   showActions?: boolean
+  showCreateLeaves?: boolean
   customData?: any[]
   customLoading?: boolean
   customError?: string
@@ -27,7 +29,8 @@ const props = withDefaults(defineProps<Props>(), {
   icon: '',
   showActions: false,
   hideExport: false,
-  hideBackButton: false
+  hideBackButton: false,
+  showCreateLeaves: false
 })
 
 // 导出相关状态
@@ -78,12 +81,6 @@ const handleExportCSV = async () => {
       allData = props.customData
     } else {
       // 获取所有数据，不分页
-      const token = localStorage.getItem('token')
-      if (!token) {
-        console.error('未找到 token，无法导出')
-        return
-      }
-
       console.log('正在获取所有数据用于导出...')
 
       let currentPage = 1
@@ -91,18 +88,13 @@ const handleExportCSV = async () => {
 
       // 循环获取所有页面的数据
       while (hasMoreData) {
-        const params = new URLSearchParams({
-          token,
-          page: currentPage.toString(),
-          page_size: '100' // 设置为最大值100
+        const result: any = await http.get(props.endpoint, {
+          params: {
+            page: currentPage,
+            page_size: 100 // 设置为最大值100
+          }
         })
 
-        const response = await fetch(`/api/v1${props.endpoint}?${params}`)
-        if (!response.ok) {
-          throw new Error(`导出失败: ${response.statusText}`)
-        }
-
-        const result = await response.json()
         const currentPageData = result.items || []
 
         // 将当前页数据添加到总数据中
@@ -203,6 +195,135 @@ const handleExportCSV = async () => {
   }
 }
 
+
+
+// 创建请假条相关
+const showCreateModal = ref(false)
+const isCreating = ref(false)
+const createError = ref('')
+
+interface LeaveForm {
+  student_id: number | null
+  course_id: number
+  leave_date: string
+  leave_hours: number | null
+  leave_type: string
+  remarks: string
+}
+
+const leaveForm = ref<LeaveForm>({
+  student_id: null,
+  course_id: 0,
+  leave_date: '',
+  leave_hours: null,
+  leave_type: '',
+  remarks: ''
+})
+
+// 获取当前用户信息
+const currentUserId = ref<number | null>(null)
+const currentUserRole = ref<string>('')
+
+// 获取课程列表
+const courses = ref<any[]>([])
+const coursesLoading = ref(false)
+
+const fetchCourses = async () => {
+  try {
+    coursesLoading.value = true
+    const result: any = await http.get('/courses')
+    courses.value = result.items || []
+  } catch (error) {
+    console.error('获取课程列表失败:', error)
+  } finally {
+    coursesLoading.value = false
+  }
+}
+
+// 打开创建弹窗
+const openCreateModal = () => {
+  // 从 localStorage 获取当前用户信息
+  const userInfo = localStorage.getItem('userInfo')
+  if (userInfo) {
+    try {
+      const user = JSON.parse(userInfo)
+      currentUserId.value = user.id
+      currentUserRole.value = user.role || 'student'
+      // 如果是学生，自动填充学生ID
+      if (currentUserRole.value === 'student') {
+        leaveForm.value.student_id = user.id
+      }
+    } catch (e) {
+      console.error('解析用户信息失败:', e)
+    }
+  }
+
+  showCreateModal.value = true
+  fetchCourses()
+  createError.value = ''
+}
+
+// 关闭创建弹窗
+const closeCreateModal = () => {
+  showCreateModal.value = false
+  // 重置表单
+  leaveForm.value = {
+    student_id: currentUserRole.value === 'student' ? currentUserId.value : null,
+    course_id: 0,
+    leave_date: '',
+    leave_hours: null,
+    leave_type: '',
+    remarks: ''
+  }
+  createError.value = ''
+}
+
+// 课程变更处理
+const handleCourseChange = () => {
+  // 可以在这里添加课程变更后的逻辑
+}
+
+// 创建请假条
+const handleCreateLeave = async () => {
+  try {
+    isCreating.value = true
+    createError.value = ''
+
+    // 验证表单
+    if (!leaveForm.value.student_id) {
+      createError.value = '请输入学生ID'
+      return
+    }
+    if (!leaveForm.value.leave_date) {
+      createError.value = '请选择请假日期'
+      return
+    }
+    if (!leaveForm.value.leave_hours || leaveForm.value.leave_hours <= 0) {
+      createError.value = '请输入有效的请假课时'
+      return
+    }
+
+    const payload = {
+      student_id: leaveForm.value.student_id,
+      course_id: leaveForm.value.course_id === 0 ? null : leaveForm.value.course_id,
+      leave_date: leaveForm.value.leave_date,
+      leave_hours: leaveForm.value.leave_hours,
+      leave_type: leaveForm.value.leave_type || null,
+      remarks: leaveForm.value.remarks || null
+    }
+
+    await http.post('/leaves', payload)
+    alert('创建请假条成功')
+    closeCreateModal()
+    fetchData() // 刷新列表
+  } catch (error: any) {
+    console.error('创建请假条失败:', error)
+    createError.value = error.response?.data?.message || error.message || '创建失败，请稍后重试'
+  } finally {
+    isCreating.value = false
+  }
+}
+
 onMounted(() => {
   fetchData()
 })
@@ -216,6 +337,9 @@ onMounted(() => {
         <div class="header-buttons">
           <button v-if="!hideExport" @click="handleExportCSV" class="btn btn-export" :disabled="isExporting">
             {{ isExporting ? '导出中...' : '导出Excel' }}
+          </button>
+          <button v-if="showCreateLeaves" @click="openCreateModal" class="btn btn-primary">
+            创建请假条
           </button>
           <button v-if="!hideBackButton" @click="onBackClick ? onBackClick() : goToHome()" class="btn btn-back">
             {{ backButtonText || '返回首页' }}
@@ -277,6 +401,82 @@ onMounted(() => {
             :total="displayTotal" :page-size="pageSize" :loading="loading" @page-change="goToPage"
             @page-size-change="setPageSize" />
         </div>
+      </div>
+    </div>
+
+    <!-- 创建请假条弹窗 -->
+    <div v-if="showCreateModal" class="modal-overlay" @click.self="closeCreateModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>创建请假条</h3>
+        </div>
+
+        <form @submit.prevent="handleCreateLeave" class="modal-form">
+          <div class="form-row-two">
+            <div class="form-group">
+              <label for="student_id">
+                学生ID
+              </label>
+              <input type="number" id="student_id" v-model="leaveForm.student_id"
+                :readonly="currentUserRole === 'student'" :disabled="currentUserRole === 'student'"
+                :class="{ 'readonly-input': currentUserRole === 'student' }" required
+                :placeholder="currentUserRole === 'student' ? `当前用户ID: ${currentUserId}` : '请输入学生ID'"
+                min="1" />
+            </div>
+            <div class="form-group">
+              <label for="leave_date">请假日期 *</label>
+              <input type="date" id="leave_date" v-model="leaveForm.leave_date" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="course">课程</label>
+            <select id="course" v-model="leaveForm.course_id" @change="handleCourseChange">
+              <option value="0">请选择课程</option>
+              <option v-if="coursesLoading" value="">加载中...</option>
+              <option v-for="course in courses" :key="course.course_id" :value="course.course_id">
+                {{ course.course_name }} ({{ course.teacher_name }})
+              </option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="leave_hours">请假课时 *</label>
+              <input type="number" id="leave_hours" v-model="leaveForm.leave_hours" required placeholder="数字" />
+            </div>
+            <div class="form-group">
+              <label for="leave_type">请假类型</label>
+              <select id="leave_type" v-model="leaveForm.leave_type">
+                <option value="">请选择请假类型</option>
+                <option value="病假">病假</option>
+                <option value="事假">事假</option>
+                <option value="公假">公假</option>
+                <option value="其他">其他</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="remarks">备注</label>
+            <textarea id="remarks" v-model="leaveForm.remarks" rows="3" placeholder="请输入请假事由等备注信息"
+              maxlength="100"></textarea>
+          </div>
+
+          <!-- 错误信息 -->
+          <div v-if="createError" class="error-message">
+            {{ createError }}
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" @click="closeCreateModal" class="btn btn-secondary">
+              取消
+            </button>
+            <button type="submit" class="btn btn-primary" :disabled="isCreating">
+              {{ isCreating ? '创建中...' : '创建请假条' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -563,6 +763,172 @@ onMounted(() => {
 
   .empty-state h3 {
     font-size: var(--text-base);
+  }
+}
+
+/* 弹窗样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: var(--spacing);
+}
+
+.modal-content {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: var(--text-xl);
+  color: var(--text-primary);
+}
+
+.modal-form {
+  padding: var(--spacing-lg);
+}
+
+.form-row-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing);
+}
+
+.form-group {
+  margin-bottom: var(--spacing);
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: var(--spacing-sm);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  transition: border-color var(--transition);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--primary-600);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.readonly-input {
+  background-color: var(--gray-100);
+  cursor: not-allowed;
+  color: var(--text-secondary);
+}
+
+.error-message {
+  padding: var(--spacing);
+  background-color: var(--error-light);
+  color: var(--error);
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  margin-bottom: var(--spacing);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing);
+  padding-top: var(--spacing);
+  border-top: 1px solid var(--border-light);
+}
+
+.btn-secondary {
+  background-color: var(--gray-100);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-medium);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  font-weight: 500;
+  transition: all var(--transition);
+}
+
+.btn-secondary:hover {
+  background-color: var(--gray-200);
+  color: var(--text-primary);
+  border-color: var(--border-dark);
+}
+
+.btn-primary {
+  background-color: var(--primary-600);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  font-weight: 500;
+  transition: all var(--transition);
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-700);
+}
+
+.btn-primary:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+@media (max-width: 768px) {
+  .form-row-two,
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-content {
+    max-width: 100%;
+  }
+
+  .modal-footer {
+    flex-direction: column;
+  }
+
+  .modal-footer button {
+    width: 100%;
   }
 }
 </style>
