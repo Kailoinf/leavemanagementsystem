@@ -129,7 +129,7 @@ onMounted(() => {
             </div>
 
             <div class="header-buttons">
-              <button @click="goToProfile" class="btn btn-outline btn-sm">
+              <button @click="goToProfile" class="btn btn-outline btn-sm selfpage-btn">
                 个人资料
               </button>
               <button @click="handleLogout" class="btn btn-ghost btn-sm logout-btn">
@@ -297,6 +297,22 @@ onMounted(() => {
   background-color: var(--error-light);
   color: var(--error);
   border-color: var(--error);
+}
+
+.selfpage-btn {
+  padding: 0.5rem 1rem;
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius);
+  font-weight: 500;
+  transition: all var(--transition);
+}
+
+.selfpage-btn:hover {
+  background-color: var(--info-light);
+  color: var(--info);
+  border-color: var(--info);
 }
 
 .dashboard-main {

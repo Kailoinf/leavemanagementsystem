@@ -126,43 +126,20 @@ const handleSubmit = async () => {
         <form @submit.prevent="handleSubmit">
           <div class="form-group">
             <label for="old_password">当前密码</label>
-            <input
-              type="password"
-              id="old_password"
-              v-model="passwordForm.old_password"
-              class="form-input"
-              placeholder="请输入当前密码"
-              required
-              :disabled="loading"
-            />
+            <input type="password" id="old_password" v-model="passwordForm.old_password" class="form-input"
+              placeholder="请输入当前密码" required :disabled="loading" />
           </div>
 
           <div class="form-group">
             <label for="new_password">新密码</label>
-            <input
-              type="password"
-              id="new_password"
-              v-model="passwordForm.new_password"
-              class="form-input"
-              placeholder="请输入新密码（至少6位）"
-              minlength="6"
-              required
-              :disabled="loading"
-            />
+            <input type="password" id="new_password" v-model="passwordForm.new_password" class="form-input"
+              placeholder="请输入新密码（至少6位）" minlength="6" required :disabled="loading" />
           </div>
 
           <div class="form-group">
             <label for="confirm_password">确认新密码</label>
-            <input
-              type="password"
-              id="confirm_password"
-              v-model="passwordForm.confirm_password"
-              class="form-input"
-              placeholder="请再次输入新密码"
-              minlength="6"
-              required
-              :disabled="loading"
-            />
+            <input type="password" id="confirm_password" v-model="passwordForm.confirm_password" class="form-input"
+              placeholder="请再次输入新密码" minlength="6" required :disabled="loading" />
           </div>
 
           <div class="form-actions">
