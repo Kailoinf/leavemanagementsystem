@@ -49,11 +49,8 @@ make help
 ```bash
 cd Backend
 
-# 安装依赖
-uv sync
-
-# 安装开发依赖（测试）
-pip install -r requirements-dev.txt
+# 安装依赖（包含开发依赖）
+uv sync --dev
 
 # 运行
 uv run python main.py

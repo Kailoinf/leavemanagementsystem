@@ -37,7 +37,7 @@ jobs:
 
       - name: 安装依赖
         working-directory: ./Frontend
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
       - name: 运行类型检查
         working-directory: ./Frontend

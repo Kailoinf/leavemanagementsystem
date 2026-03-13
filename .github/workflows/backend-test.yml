@@ -24,13 +24,15 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: 缓存 pip 依赖
+      - name: 缓存 uv 依赖
         uses: actions/cache@v4
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('Backend/requirements-dev.txt') }}
+          path: |
+            ~/.cache/uv
+            .venv
+          key: ${{ runner.os }}-uv-${{ hashFiles('Backend/pyproject.toml') }}
           restore-keys: |
-            ${{ runner.os }}-pip-
+            ${{ runner.os }}-uv-
 
       - name: 安装 uv
         run: |
@@ -40,12 +42,11 @@ jobs:
       - name: 安装依赖
         working-directory: ./Backend
         run: |
-          uv sync
-          pip install -r requirements-dev.txt
+          uv sync --dev
 
       - name: 运行测试
         working-directory: ./Backend
-        run: pytest --cov=app --cov-report=xml --cov-report=term
+        run: uv run pytest --cov=app --cov-report=xml --cov-report=term
 
       - name: 上传覆盖率报告
         uses: codecov/codecov-action@v4

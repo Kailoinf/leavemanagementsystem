@@ -21,8 +21,7 @@ help:
 # 安装后端依赖
 install-backend:
 	@echo "📦 安装后端依赖..."
-	cd Backend && uv sync
-	cd Backend && pip install -r requirements-dev.txt
+	cd Backend && uv sync --dev
 
 # 安装前端依赖
 install-frontend:
