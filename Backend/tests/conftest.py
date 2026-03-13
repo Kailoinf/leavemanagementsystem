@@ -21,11 +21,12 @@ def test_db():
 @pytest.fixture(scope="function")
 def client(test_db):
     """创建测试客户端"""
+    # 覆盖数据库依赖（get_session 是生成器，需要特殊处理）
+    from app.database.connection import get_session
+
     def get_test_session():
         yield test_db
 
-    # 覆盖数据库依赖
-    from app.database.connection import get_session
     app.dependency_overrides[get_session] = get_test_session
 
     with TestClient(app) as test_client:
