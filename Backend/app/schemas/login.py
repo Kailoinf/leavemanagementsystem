@@ -4,7 +4,6 @@ from pydantic import BaseModel
 class UserLogin(BaseModel):
     id: int
     password: str
-    token: str
 
 
 class ChangePassword(BaseModel):

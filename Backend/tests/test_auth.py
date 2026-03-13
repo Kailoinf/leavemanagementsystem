@@ -59,7 +59,7 @@ def test_login_with_invalid_credentials(client: TestClient):
     response = client.post(
         "/api/v1/auth/login",
         json={
-            "username": "nonexistent",
+            "id": 999999,  # 不存在的用户ID
             "password": "wrongpassword"
         }
     )
