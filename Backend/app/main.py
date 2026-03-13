@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlmodel import SQLModel
 
 from app.database.connection import engine
@@ -30,3 +31,15 @@ app.add_middleware(
 
 # 包含API路由
 app.include_router(api_router, prefix="/api/v1")
+
+# 挂载静态文件目录
+import os
+from pathlib import Path
+from app.services.file import FileService
+
+# 确保上传目录存在
+FileService.ensure_directories()
+
+# 挂载静态文件服务
+if os.path.exists(FileService.UPLOAD_DIR):
+    app.mount("/uploads", StaticFiles(directory=str(FileService.UPLOAD_DIR)), name="uploads")
