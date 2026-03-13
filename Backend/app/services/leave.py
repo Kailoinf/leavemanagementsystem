@@ -342,3 +342,108 @@ class LeaveService:
         session.commit()
         session.refresh(leave)
         return leave
+
+    @staticmethod
+    def approve_leave(
+        token: str,
+        leave_id: int,
+        reviewer_note: str = None,
+        session: Session = None,
+    ):
+        """审核通过请假申请"""
+        # 验证登录状态并获取用户信息
+        obj = check_login(token, session)
+
+        # 只有审核员和管理员可以审核
+        if obj["role"] not in ["reviewer", "admin"]:
+            raise HTTPException(status_code=403, detail="Only reviewers and admins can approve leave requests")
+
+        # 获取请假记录
+        leave = session.exec(
+            select(Leave).where(Leave.leave_id == leave_id)
+        ).first()
+
+        if not leave:
+            raise HTTPException(status_code=404, detail="Leave record not found")
+
+        # 检查状态
+        if leave.status == "已批准":
+            raise HTTPException(status_code=400, detail="Leave request has already been approved")
+        if leave.status == "已拒绝":
+            raise HTTPException(status_code=400, detail="Cannot approve a rejected leave request")
+
+        # 权限验证：审核员只能审核分配给自己的请假记录
+        if obj["role"] == "reviewer":
+            if leave.reviewer_id != obj["id"]:
+                raise HTTPException(status_code=403, detail="Reviewers can only approve leave requests assigned to them")
+
+        # 审核权限分级验证
+        leave_days = leave.leave_days
+        reviewer = session.exec(
+            select(Reviewer).where(Reviewer.reviewer_id == obj["id"])
+        ).first()
+
+        if not reviewer:
+            raise HTTPException(status_code=404, detail="Reviewer not found")
+
+        # 根据天数和审核员身份进行权限验证
+        if leave_days <= 1 and reviewer.reviewer_name not in ["辅导员"]:
+            raise HTTPException(status_code=403, detail="Leave requests <= 1 day can only be approved by counselors")
+        elif leave_days <= 3 and reviewer.reviewer_name not in ["辅导员", "院党总支副书记"]:
+            raise HTTPException(status_code=403, detail="Leave requests <= 3 days can only be approved by counselors or vice party secretaries")
+        elif leave_days <= 7 and reviewer.reviewer_name not in ["辅导员", "院党总支副书记", "院党总支书记"]:
+            raise HTTPException(status_code=403, detail="Leave requests <= 7 days can only be approved by counselors, vice party secretaries, or party secretaries")
+        elif leave_days > 7 and reviewer.reviewer_name not in ["学生工作处"]:
+            raise HTTPException(status_code=403, detail="Leave requests > 7 days can only be approved by student affairs office")
+
+        # 更新状态
+        leave.status = "已批准"
+        leave.audit_remarks = reviewer_note
+        leave.audit_time = datetime.now()
+
+        session.commit()
+        session.refresh(leave)
+        return leave
+
+    @staticmethod
+    def reject_leave(
+        token: str,
+        leave_id: int,
+        reviewer_note: str = None,
+        session: Session = None,
+    ):
+        """拒绝请假申请"""
+        # 验证登录状态并获取用户信息
+        obj = check_login(token, session)
+
+        # 只有审核员和管理员可以审核
+        if obj["role"] not in ["reviewer", "admin"]:
+            raise HTTPException(status_code=403, detail="Only reviewers and admins can reject leave requests")
+
+        # 获取请假记录
+        leave = session.exec(
+            select(Leave).where(Leave.leave_id == leave_id)
+        ).first()
+
+        if not leave:
+            raise HTTPException(status_code=404, detail="Leave record not found")
+
+        # 检查状态
+        if leave.status == "已拒绝":
+            raise HTTPException(status_code=400, detail="Leave request has already been rejected")
+        if leave.status == "已批准":
+            raise HTTPException(status_code=400, detail="Cannot reject an approved leave request")
+
+        # 权限验证：审核员只能审核分配给自己的请假记录
+        if obj["role"] == "reviewer":
+            if leave.reviewer_id != obj["id"]:
+                raise HTTPException(status_code=403, detail="Reviewers can only reject leave requests assigned to them")
+
+        # 更新状态
+        leave.status = "已拒绝"
+        leave.reviewer_note = reviewer_note
+        leave.review_time = datetime.now()
+
+        session.commit()
+        session.refresh(leave)
+        return leave

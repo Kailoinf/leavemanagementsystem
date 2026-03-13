@@ -73,3 +73,25 @@ def edit_leave_by_id(
     session: Session = Depends(get_session),
 ):
     return LeaveService.edit_leave(token, leave_id, leave_data, session)
+
+
+@router.post("/leaves/{leave_id}/approve")
+def approve_leave(
+    leave_id: int,
+    token: str,
+    reviewer_note: str = None,
+    session: Session = Depends(get_session),
+):
+    """审核通过请假申请"""
+    return LeaveService.approve_leave(token, leave_id, reviewer_note, session)
+
+
+@router.post("/leaves/{leave_id}/reject")
+def reject_leave(
+    leave_id: int,
+    token: str,
+    reviewer_note: str = None,
+    session: Session = Depends(get_session),
+):
+    """拒绝请假申请"""
+    return LeaveService.reject_leave(token, leave_id, reviewer_note, session)

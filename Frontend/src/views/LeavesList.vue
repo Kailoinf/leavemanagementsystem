@@ -2,7 +2,7 @@
 import { ref, reactive } from 'vue'
 import GenericList from '../components/GenericList.vue'
 import { formatDate } from '../utils/formatters'
-import { getAllCourses, getStudentCourses, editLeave, auditLeave } from '../api'
+import { getAllCourses, getStudentCourses, editLeave, auditLeave, exportLeavesCSV, exportLeavesExcel, exportLeavesJSON } from '../api'
 import type { Leave, LeaveCreate, Course, StudentCourseResponse } from '../types'
 
 // 课程列表
@@ -24,6 +24,11 @@ const auditForm = reactive({
   status: '',
   audit_remarks: ''
 })
+
+// 导出功能相关状态
+const showExportModal = ref(false)
+const isExporting = ref(false)
+const exportError = ref('')
 
 // 获取当前用户信息
 const currentUserId = parseInt(localStorage.getItem('id') || '0')
@@ -310,20 +315,82 @@ const refreshData = () => {
   // GenericList组件会自动处理刷新，这里可以添加其他逻辑
   console.log('数据已刷新')
 }
+
+// 打开导出弹窗
+const openExportModal = () => {
+  showExportModal.value = true
+  exportError.value = ''
+}
+
+// 关闭导出弹窗
+const closeExportModal = () => {
+  showExportModal.value = false
+  exportError.value = ''
+}
+
+// 处理导出 CSV
+const handleExportCSV = async () => {
+  try {
+    isExporting.value = true
+    exportError.value = ''
+
+    await exportLeavesCSV()
+    closeExportModal()
+
+  } catch (error: any) {
+    console.error('导出 CSV 失败:', error)
+    exportError.value = error.response?.data?.detail || '导出 CSV 失败，请重试'
+  } finally {
+    isExporting.value = false
+  }
+}
+
+// 处理导出 Excel
+const handleExportExcel = async () => {
+  try {
+    isExporting.value = true
+    exportError.value = ''
+
+    await exportLeavesExcel()
+    closeExportModal()
+
+  } catch (error: any) {
+    console.error('导出 Excel 失败:', error)
+    exportError.value = error.response?.data?.detail || '导出 Excel 失败，请重试'
+  } finally {
+    isExporting.value = false
+  }
+}
+
+// 处理导出 JSON
+const handleExportJSON = async () => {
+  try {
+    isExporting.value = true
+    exportError.value = ''
+
+    await exportLeavesJSON()
+    closeExportModal()
+
+  } catch (error: any) {
+    console.error('导出 JSON 失败:', error)
+    exportError.value = error.response?.data?.detail || '导出 JSON 失败，请重试'
+  } finally {
+    isExporting.value = false
+  }
+}
 </script>
 
 <template>
   <div class="leaves-page">
     <!-- 自定义页面头部，包含创建按钮 -->
-    <!-- <div class="page-header">
+    <div class="page-header">
       <h1 class="page-title">请假条列表</h1>
       <div class="header-buttons">
-        
-        <button @click="handleExportCSV" class="btn btn-export" :disabled="isExporting">
-          {{ isExporting ? '导出中...' : '导出Excel' }}
+        <button @click="openExportModal" class="btn btn-export">
+          导出数据
         </button>
       </div>
-    </div> -->
+    </div>
 
     <GenericList endpoint="/leaves" title="请假条列表" item-label="张请假条" :show-actions="true" :show-create-leaves="true"
       :columns="[
@@ -468,10 +535,105 @@ const refreshData = () => {
         </form>
       </div>
     </div>
+
+    <!-- 导出数据弹窗 -->
+    <div v-if="showExportModal" class="modal-overlay" @click.self="closeExportModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>导出请假数据</h3>
+        </div>
+
+        <div class="modal-form">
+          <p class="export-description">请选择导出格式：</p>
+
+          <div class="export-options">
+            <button @click="handleExportCSV" class="export-option" :disabled="isExporting">
+              <span class="export-icon">📄</span>
+              <div class="export-info">
+                <span class="export-title">CSV 格式</span>
+                <span class="export-subtitle">适用于 Excel 打开</span>
+              </div>
+            </button>
+
+            <button @click="handleExportExcel" class="export-option" :disabled="isExporting">
+              <span class="export-icon">📊</span>
+              <div class="export-info">
+                <span class="export-title">Excel 格式</span>
+                <span class="export-subtitle">带样式的电子表格</span>
+              </div>
+            </button>
+
+            <button @click="handleExportJSON" class="export-option" :disabled="isExporting">
+              <span class="export-icon">🔧</span>
+              <div class="export-info">
+                <span class="export-title">JSON 格式</span>
+                <span class="export-subtitle">适用于程序处理</span>
+              </div>
+            </button>
+          </div>
+
+          <!-- 错误信息 -->
+          <div v-if="exportError" class="error-message">
+            {{ exportError }}
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" @click="closeExportModal" class="btn btn-secondary">
+              取消
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
+/* 页面头部样式 */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-lg);
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+}
+
+.page-title {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.header-buttons {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.btn-export {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 0.625rem 1.25rem;
+  background-color: var(--success-600);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btn-export:hover {
+  background-color: var(--success-700);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
 /* 弹窗样式 */
 .modal-overlay {
   position: fixed;
@@ -666,6 +828,67 @@ const refreshData = () => {
   background-color: var(--gray-200);
   color: var(--text-primary);
   border-color: var(--border-dark);
+}
+
+/* 导出选项样式 */
+.export-description {
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-lg) 0;
+  text-align: center;
+}
+
+.export-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing);
+  margin-bottom: var(--spacing-lg);
+}
+
+.export-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  background-color: var(--bg-secondary);
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition);
+  text-align: left;
+}
+
+.export-option:hover:not(:disabled) {
+  background-color: var(--primary-50);
+  border-color: var(--primary-500);
+  transform: translateX(4px);
+}
+
+.export-option:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.export-icon {
+  font-size: 2rem;
+}
+
+.export-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.export-title {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.export-subtitle {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
 }
 
 /* 响应式设计 */

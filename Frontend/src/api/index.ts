@@ -361,3 +361,247 @@ export const auditLeave = async (leaveId: number, auditData: {
     throw error
   }
 }
+
+// ============ 文件上传相关 API ============
+
+// 上传请假材料
+export const uploadMaterial = async (leaveId: number, file: File) => {
+  try {
+    const token = localStorage.getItem('token')
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const params: any = {}
+    if (token) {
+      params.token = token
+    }
+
+    console.log(`上传请假材料 ${leaveId}`, file.name)
+    const response = await http.post(`/upload/material/${leaveId}`, formData, {
+      params,
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    console.log('上传请假材料成功:', response)
+    return response
+  } catch (error: any) {
+    console.error('上传请假材料失败:', error)
+    throw error
+  }
+}
+
+// 删除请假材料
+export const deleteMaterial = async (filename: string) => {
+  try {
+    const token = localStorage.getItem('token')
+    const params: any = {}
+    if (token) {
+      params.token = token
+    }
+
+    console.log(`删除请假材料 ${filename}`)
+    const response = await http.delete(`/files/material/${filename}`, { params })
+    console.log('删除请假材料成功:', response)
+    return response
+  } catch (error: any) {
+    console.error('删除请假材料失败:', error)
+    throw error
+  }
+}
+
+// ============ 数据导出相关 API ============
+
+// 导出请假记录为 CSV
+export const exportLeavesCSV = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    const params: any = {}
+    if (token) {
+      params.token = token
+    }
+
+    console.log('导出请假记录为 CSV')
+    const response = await http.get('/export/leaves/csv', {
+      params,
+      responseType: 'blob'
+    })
+
+    // 从响应头获取文件名
+    const contentDisposition = response.headers?.['content-disposition'] || ''
+    const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+    const filename = filenameMatch ? filenameMatch[1].replace(/['"]/g, '') : `leaves_export_${Date.now()}.csv`
+
+    // 创建下载链接
+    const blob = new Blob([response.data], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.click()
+    window.URL.revokeObjectURL(url)
+
+    console.log('导出请假记录 CSV 成功:', filename)
+    return { success: true, filename }
+  } catch (error: any) {
+    console.error('导出请假记录 CSV 失败:', error)
+    throw error
+  }
+}
+
+// 导出请假记录为 JSON
+export const exportLeavesJSON = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    const params: any = {}
+    if (token) {
+      params.token = token
+    }
+
+    console.log('导出请假记录为 JSON')
+    const response = await http.get('/export/leaves/json', {
+      params,
+      responseType: 'blob'
+    })
+
+    // 从响应头获取文件名
+    const contentDisposition = response.headers?.['content-disposition'] || ''
+    const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+    const filename = filenameMatch ? filenameMatch[1].replace(/['"]/g, '') : `leaves_export_${Date.now()}.json`
+
+    // 创建下载链接
+    const blob = new Blob([response.data], { type: 'application/json' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.click()
+    window.URL.revokeObjectURL(url)
+
+    console.log('导出请假记录 JSON 成功:', filename)
+    return { success: true, filename }
+  } catch (error: any) {
+    console.error('导出请假记录 JSON 失败:', error)
+    throw error
+  }
+}
+
+// 导出请假记录为 Excel
+export const exportLeavesExcel = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    const params: any = {}
+    if (token) {
+      params.token = token
+    }
+
+    console.log('导出请假记录为 Excel')
+    const response = await http.get('/export/leaves/excel', {
+      params,
+      responseType: 'blob'
+    })
+
+    // 从响应头获取文件名
+    const contentDisposition = response.headers?.['content-disposition'] || ''
+    const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+    const filename = filenameMatch ? filenameMatch[1].replace(/['"]/g, '') : `leaves_export_${Date.now()}.xlsx`
+
+    // 创建下载链接
+    const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.click()
+    window.URL.revokeObjectURL(url)
+
+    console.log('导出请假记录 Excel 成功:', filename)
+    return { success: true, filename }
+  } catch (error: any) {
+    console.error('导出请假记录 Excel 失败:', error)
+    throw error
+  }
+}
+
+// ============ 批量导入相关 API ============
+
+// 批量导入学生
+export const importStudents = async (file: File, defaultPassword: string = '123456') => {
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const params: any = { default_password: defaultPassword }
+
+    console.log('批量导入学生', file.name)
+    const response = await http.post('/import/students', formData, { params })
+    console.log('批量导入学生成功:', response)
+    return response
+  } catch (error: any) {
+    console.error('批量导入学生失败:', error)
+    throw error
+  }
+}
+
+// 批量导入教师
+export const importTeachers = async (file: File, defaultPassword: string = '123456') => {
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const params: any = { default_password: defaultPassword }
+
+    console.log('批量导入教师', file.name)
+    const response = await http.post('/import/teachers', formData, { params })
+    console.log('批量导入教师成功:', response)
+    return response
+  } catch (error: any) {
+    console.error('批量导入教师失败:', error)
+    throw error
+  }
+}
+
+// 批量导入审核员
+export const importReviewers = async (file: File, defaultPassword: string = '123456') => {
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const params: any = { default_password: defaultPassword }
+
+    console.log('批量导入审核员', file.name)
+    const response = await http.post('/import/reviewers', formData, { params })
+    console.log('批量导入审核员成功:', response)
+    return response
+  } catch (error: any) {
+    console.error('批量导入审核员失败:', error)
+    throw error
+  }
+}
+
+// 下载导入模板
+export const downloadImportTemplate = async (role: 'student' | 'teacher' | 'reviewer') => {
+  try {
+    console.log(`下载导入模板 ${role}`)
+    const response = await http.get(`/import/template/${role}`, {
+      responseType: 'blob'
+    })
+
+    const filename = `${role}_import_template.csv`
+
+    // 创建下载链接
+    const blob = new Blob([response.data], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.click()
+    window.URL.revokeObjectURL(url)
+
+    console.log('下载导入模板成功:', filename)
+    return { success: true, filename }
+  } catch (error: any) {
+    console.error('下载导入模板失败:', error)
+    throw error
+  }
+}

@@ -100,6 +100,11 @@ onMounted(() => {
   getTeacherCount()
   getCourseCount()
 })
+
+// 导航到数据导入页面
+const goToImport = () => {
+  router.push('/import')
+}
 </script>
 <template>
   <div class="dashboard-page">
@@ -162,6 +167,8 @@ onMounted(() => {
               :onClick="goToTeachersList" />
             <GenericFeatureCard title="课程管理" :count="courseResponse?.courses_count || 0" description="设置和管理课程信息"
               :onClick="goToCoursesList" />
+            <GenericFeatureCard v-if="userInfo?.role === 'admin'" title="数据导入" description="批量导入学生、教师和审核员"
+              :onClick="goToImport" icon="📥" />
           </div>
         </section>
       </div>
