@@ -42,7 +42,7 @@ jobs:
       - name: 安装依赖
         working-directory: ./Backend
         run: |
-          uv sync --dev
+          uv sync --extra dev
 
       - name: 运行测试
         working-directory: ./Backend

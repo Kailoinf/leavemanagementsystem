@@ -50,7 +50,7 @@ make help
 cd Backend
 
 # 安装依赖（包含开发依赖）
-uv sync --dev
+uv sync --extra dev
 
 # 运行
 uv run python main.py
