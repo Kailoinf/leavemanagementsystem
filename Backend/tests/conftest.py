@@ -5,6 +5,13 @@ from fastapi.testclient import TestClient
 from pathlib import Path
 import tempfile
 
+# 导入所有 models 以确保它们被注册到 SQLModel.metadata
+from app.models import (
+    Admin, Reviewer, Student, Teacher, Course,
+    Leave, LeaveStatus, LeaveType, Login, StudentCourse, School, Role
+)
+
+# 导入 app
 from app.main import app
 
 
