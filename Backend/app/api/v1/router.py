@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1 import auth, students, teachers, reviewers, courses, leaves, status, student_courses, files, export
+from app.api.v1 import auth, students, teachers, reviewers, courses, leaves, status, student_courses, files, export, import_data
 
 api_router = APIRouter()
 
@@ -14,3 +14,4 @@ api_router.include_router(status.router, prefix="/status", tags=["status"])
 api_router.include_router(student_courses.router, prefix="/student-courses", tags=["student-courses"])
 api_router.include_router(files.router, prefix="/files", tags=["files"])
 api_router.include_router(export.router, prefix="/export", tags=["export"])
+api_router.include_router(import_data.router, prefix="/import", tags=["import"])
