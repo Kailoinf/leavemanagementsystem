@@ -9,6 +9,13 @@ vi.mock('axios', () => ({
       post: vi.fn(),
       put: vi.fn(),
       delete: vi.fn(),
+      defaults: {
+        baseURL: 'http://localhost:8000/api/v1',
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      },
       interceptors: {
         request: { use: vi.fn() },
         response: { use: vi.fn() },

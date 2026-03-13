@@ -1,12 +1,22 @@
 import { vi } from 'vitest'
 
-// Mock localStorage
-const localStorageMock = {
-  getItem: vi.fn(() => null),
-  setItem: vi.fn(() => null),
-  removeItem: vi.fn(() => null),
-  clear: vi.fn(() => null),
-}
+// Mock localStorage - 使用真实的存储机制
+const localStorageMock = (() => {
+  let store: Record<string, string> = {}
+
+  return {
+    getItem: (key: string) => store[key] || null,
+    setItem: (key: string, value: string) => {
+      store[key] = value.toString()
+    },
+    removeItem: (key: string) => {
+      delete store[key]
+    },
+    clear: () => {
+      store = {}
+    },
+  }
+})()
 
 global.localStorage = localStorageMock as any
 
@@ -18,6 +28,13 @@ vi.mock('axios', () => ({
       post: vi.fn(),
       put: vi.fn(),
       delete: vi.fn(),
+      defaults: {
+        baseURL: 'http://localhost:8000/api/v1',
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      },
       interceptors: {
         request: { use: vi.fn() },
         response: { use: vi.fn() },
