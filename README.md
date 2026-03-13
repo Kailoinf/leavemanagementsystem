@@ -24,6 +24,26 @@
 
 ## 🚀 快速开始
 
+### 一键安装和启动（推荐）
+
+```bash
+# 安装所有依赖（前端 + 后端）
+make install
+
+# 启动前后端开发服务器
+make dev
+
+# 运行所有测试
+make test-all
+```
+
+### 使用 Makefile
+
+```bash
+# 查看所有可用命令
+make help
+```
+
 ### 后端
 
 ```bash
