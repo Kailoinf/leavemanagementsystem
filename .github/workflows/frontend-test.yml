@@ -1,0 +1,56 @@
+name: Frontend Tests
+
+on:
+  push:
+    branches: [master, main, develop]
+    paths:
+      - 'Frontend/**'
+      - '.github/workflows/frontend-test.yml'
+  pull_request:
+    branches: [master, main]
+    paths:
+      - 'Frontend/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 缓存 pnpm 依赖
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: 安装 pnpm
+        run: npm install -g pnpm
+
+      - name: 安装依赖
+        working-directory: ./Frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: 运行类型检查
+        working-directory: ./Frontend
+        run: pnpm type-check
+
+      - name: 运行测试
+        working-directory: ./Frontend
+        run: pnpm test:coverage
+
+      - name: 上传覆盖率报告
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: ./Frontend/coverage/coverage-final.json
+          flags: frontend
+          name: frontend-coverage

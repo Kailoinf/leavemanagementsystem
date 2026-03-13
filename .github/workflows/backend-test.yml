@@ -1,0 +1,56 @@
+name: Backend Tests
+
+on:
+  push:
+    branches: [master, main, develop]
+    paths:
+      - 'Backend/**'
+      - '.github/workflows/backend-test.yml'
+  pull_request:
+    branches: [master, main]
+    paths:
+      - 'Backend/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 缓存 pip 依赖
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('Backend/requirements-dev.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: 安装 uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: 安装依赖
+        working-directory: ./Backend
+        run: |
+          uv sync
+          pip install -r requirements-dev.txt
+
+      - name: 运行测试
+        working-directory: ./Backend
+        run: pytest --cov=app --cov-report=xml --cov-report=term
+
+      - name: 上传覆盖率报告
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: ./Backend/coverage.xml
+          flags: backend
+          name: backend-coverage
